@@ -1,0 +1,26 @@
+{
+  "name": "cypher-ray-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bohar-s-Bit/cypher-ray-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Bohar-s-Bit/cypher-ray-backend/issues"
+  },
+  "homepage": "https://github.com/Bohar-s-Bit/cypher-ray-backend#readme",
+  "dependencies": {
+    "express": "^5.1.0",
+    "nodemon": "^3.1.10"
+  }
+}
