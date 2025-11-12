@@ -246,7 +246,7 @@ export const setCredits = async (
 export const getTierCredits = (tierName) => {
   const tierCredits = {
     tier1: 1000, // Tier 1 - 1000 credits
-    tier2: 500,  // Tier 2 - 500 credits
+    tier2: 500, // Tier 2 - 500 credits
   };
 
   return tierCredits[tierName] || 500; // Default to 500

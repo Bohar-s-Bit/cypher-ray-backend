@@ -94,7 +94,7 @@ export const getUsersService = async (filters = {}, pagination = {}) => {
     if (userType) {
       query.userType = userType;
     }
-    
+
     if (tier) {
       query.tier = tier;
     }
