@@ -214,15 +214,16 @@ export const getPlatformStatsService = async () => {
     // Active users
     const activeUsers = await User.countDocuments({ isActive: true });
 
-    // Users by tier
-    const usersByTier = await User.aggregate([
-      {
-        $group: {
-          _id: "$userType",
-          count: { $sum: 1 },
-        },
-      },
-    ]);
+    // Users by tier (excluding admins)
+    const tier1Users = await User.countDocuments({
+      userType: "user",
+      tier: "tier1",
+    });
+
+    const tier2Users = await User.countDocuments({
+      userType: "user",
+      tier: "tier2",
+    });
 
     // Total credits distributed
     const creditStats = await User.aggregate([
@@ -248,7 +249,8 @@ export const getPlatformStatsService = async () => {
       totalUsers,
       activeUsers,
       inactiveUsers: totalUsers - activeUsers,
-      usersByTier,
+      tier1Users,
+      tier2Users,
       credits: creditStats[0] || {
         totalCreditsDistributed: 0,
         totalCreditsUsed: 0,

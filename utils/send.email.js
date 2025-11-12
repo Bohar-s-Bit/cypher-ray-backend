@@ -83,10 +83,34 @@ export const sendWelcomeEmail = async ({
           .credential-value {
             font-family: monospace;
             background: #f0f0f0;
-            padding: 5px 10px;
+            padding: 8px 12px;
             border-radius: 3px;
             display: inline-block;
             margin-top: 5px;
+            font-size: 14px;
+            user-select: all;
+          }
+          .password-highlight {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border: 2px dashed #667eea;
+          }
+          .password-text {
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+            letter-spacing: 1px;
+            user-select: all;
+            cursor: pointer;
+          }
+          .copy-instruction {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+            font-style: italic;
           }
           .button {
             display: inline-block;
@@ -136,7 +160,12 @@ export const sendWelcomeEmail = async ({
             
             <div class="credential-item">
               <div class="credential-label">Temporary Password:</div>
-              <div class="credential-value">${password}</div>
+              <div class="password-highlight">
+                <div class="password-text" title="Click to select, then copy">${password}</div>
+                <div class="copy-instruction">
+                  💡 Click on the password above to select it, then press Ctrl+C (Windows) or Cmd+C (Mac) to copy
+                </div>
+              </div>
             </div>
             
             <div class="credential-item">

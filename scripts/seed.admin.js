@@ -41,7 +41,8 @@ const seedAdmin = async () => {
         used: 0,
         remaining: 999999,
       },
-      tier: {
+      tier: null, // Admin doesn't need a tier
+      tierInfo: {
         name: "Admin",
         monthlyCredits: 999999,
         pricePerYear: 0,
