@@ -53,7 +53,7 @@ const queueConfig = {
       delay: 10000, // 10 seconds
     },
     timeout: 600000, // 10 minutes
-    removeOnComplete: false,
+    removeOnComplete: 100, // Keep last 100 completed jobs for history
     removeOnFail: false,
   },
 };
