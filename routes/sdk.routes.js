@@ -31,11 +31,7 @@ router.use(lowCreditWarning);
  * @desc    Check if binary hash already analyzed (deduplication)
  * @access  Private (API Key required)
  */
-router.get(
-  "/check-hash",
-  requirePermission("sdk:check-hash"),
-  checkHash
-);
+router.get("/check-hash", requirePermission("sdk:check-hash"), checkHash);
 
 /**
  * @route   POST /api/sdk/analyze
@@ -68,22 +64,14 @@ router.post(
  * @desc    Get analysis results for a job
  * @access  Private (API Key required)
  */
-router.get(
-  "/results/:jobId",
-  requirePermission("sdk:results"),
-  getResults
-);
+router.get("/results/:jobId", requirePermission("sdk:results"), getResults);
 
 /**
  * @route   GET /api/sdk/credits
  * @desc    Get user credit information
  * @access  Private (API Key required)
  */
-router.get(
-  "/credits",
-  requirePermission("sdk:credits"),
-  getCredits
-);
+router.get("/credits", requirePermission("sdk:credits"), getCredits);
 
 // Error handler for multer errors
 router.use((error, req, res, next) => {

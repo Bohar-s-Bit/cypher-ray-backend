@@ -380,4 +380,3 @@ export const refundCreditsForSDK = async (userId, amount, jobId, reason) => {
     throw new Error(`Failed to refund SDK credits: ${error.message}`);
   }
 };
-

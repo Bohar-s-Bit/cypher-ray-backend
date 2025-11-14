@@ -179,18 +179,14 @@ export function initializeQueueWorkers() {
 
   // Register processor for each tier
   Object.keys(tierConcurrency).forEach((tier) => {
-    sdkAnalysisQueue.process(
-      tier,
-      tierConcurrency[tier],
-      async (job) => {
-        queueLogger.info(`Processing ${tier} job`, {
-          jobId: job.id,
-          attempt: job.attemptsMade + 1,
-        });
+    sdkAnalysisQueue.process(tier, tierConcurrency[tier], async (job) => {
+      queueLogger.info(`Processing ${tier} job`, {
+        jobId: job.id,
+        attempt: job.attemptsMade + 1,
+      });
 
-        return await processAnalysisJob(job);
-      }
-    );
+      return await processAnalysisJob(job);
+    });
 
     queueLogger.info(`Registered ${tier} processor`, {
       concurrency: tierConcurrency[tier],

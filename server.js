@@ -165,7 +165,7 @@ httpServer.listen(PORT, () => {
     }`
   );
   console.log(`🔌 WebSocket server ready`);
-  
+
   logger.info("Server started successfully", {
     port: PORT,
     environment: process.env.NODE_ENV || "development",

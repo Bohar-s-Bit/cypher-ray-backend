@@ -147,16 +147,12 @@ export const analyzeSingle = async (req, res) => {
       });
     }
 
-    // Deduct credits
-    const creditsRequired = req.creditsRequired || 1;
-    await deductCreditsForSDK(userId, creditsRequired, null, apiKeyId);
-
     // Determine tier and priority
     const userTier = req.user.tier || "tier2";
     const priorityMap = { tier1: 1, tier2: 2 };
     const priority = priorityMap[userTier] || 2;
 
-    // Create analysis job
+    // Create analysis job first
     const job = await AnalysisJob.create({
       userId,
       apiKeyId,
@@ -167,7 +163,7 @@ export const analyzeSingle = async (req, res) => {
       status: "queued",
       tier: userTier,
       priority,
-      creditsDeducted: creditsRequired,
+      creditsDeducted: req.creditsRequired || 1,
       metadata: {
         sourceIp: req.ip,
         userAgent: req.get("user-agent"),
@@ -175,6 +171,15 @@ export const analyzeSingle = async (req, res) => {
         ciPlatform: req.get("x-ci-platform"),
       },
     });
+
+    // Deduct credits with job ID for proper tracking
+    const creditsRequired = req.creditsRequired || 1;
+    await deductCreditsForSDK(
+      userId,
+      creditsRequired,
+      job._id.toString(),
+      apiKeyId
+    );
 
     // Add to queue
     await sdkAnalysisQueue.add(
@@ -314,11 +319,7 @@ export const analyzeBatch = async (req, res) => {
           continue;
         }
 
-        // New analysis - deduct credits
-        await deductCreditsForSDK(userId, 1, null, apiKeyId);
-        creditsCharged += 1;
-
-        // Create job
+        // Create job first
         const job = await AnalysisJob.create({
           userId,
           apiKeyId,
@@ -337,6 +338,10 @@ export const analyzeBatch = async (req, res) => {
             ciPlatform: req.get("x-ci-platform"),
           },
         });
+
+        // Deduct credits with job ID
+        await deductCreditsForSDK(userId, 1, job._id.toString(), apiKeyId);
+        creditsCharged += 1;
 
         // Add to queue
         await sdkAnalysisQueue.add(
@@ -458,10 +463,7 @@ export const getResults = async (req, res) => {
     } else if (job.status === "failed") {
       response.job.error = job.error;
     } else if (job.status === "processing") {
-      response.estimatedTime = Math.max(
-        30 - job.getProcessingTime(),
-        5
-      ); // Rough estimate
+      response.estimatedTime = Math.max(30 - job.getProcessingTime(), 5); // Rough estimate
     }
 
     return res.json(response);

@@ -8,7 +8,8 @@ import { queueLogger } from "../utils/logger.js";
  */
 class AnalysisService {
   constructor() {
-    this.mlServiceUrl = process.env.MODEL_URL || "http://localhost:5000/analyze";
+    this.mlServiceUrl =
+      process.env.MODEL_URL || "http://localhost:5000/analyze";
     this.timeout = 300000; // 5 minutes
   }
 
@@ -70,9 +71,7 @@ class AnalysisService {
 
       // Check if ML service is down
       if (error.code === "ECONNREFUSED" || error.code === "ENOTFOUND") {
-        throw new Error(
-          "ML service unavailable - please try again later"
-        );
+        throw new Error("ML service unavailable - please try again later");
       }
 
       throw new Error(
