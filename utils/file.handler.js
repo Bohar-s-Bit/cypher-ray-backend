@@ -1,84 +1,72 @@
 import multer from "multer";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import { fileURLToPath } from "url";
+import cloudinary, {
+  generatePublicId,
+  CLOUDINARY_CONFIG,
+} from "../config/cloudinary.js";
+import { queueLogger } from "./logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure upload directory exists
-const uploadDir = path.join(
-  __dirname,
-  "../",
-  process.env.UPLOAD_DIR || "uploads/sdk"
-);
+// Configure Cloudinary storage
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    // Get userId from authenticated request
+    const userId = req.user?._id?.toString() || "anonymous";
 
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+    // Generate unique public ID (without extension to avoid Cloudinary validation)
+    const baseFilename = file.originalname.replace(/\.[^/.]+$/, ""); // Remove extension
+    const publicId = generatePublicId(userId, baseFilename);
 
-// Configure storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename: timestamp-hash-original.ext
-    const timestamp = Date.now();
-    const hash = crypto.randomBytes(8).toString("hex");
-    const ext = path.extname(file.originalname);
-    const filename = `${timestamp}-${hash}${ext}`;
-    cb(null, filename);
+    queueLogger.info("Cloudinary upload initiated", {
+      userId,
+      filename: file.originalname,
+      publicId,
+    });
+
+    return {
+      folder: CLOUDINARY_CONFIG.baseFolder,
+      public_id: publicId,
+      resource_type: "raw", // Use 'raw' for any file type including binaries
+      type: "private", // Private files
+      access_mode: "authenticated",
+      use_filename: false, // Use our generated public_id
+      unique_filename: true,
+      overwrite: false,
+      allowed_formats: null, // Accept any format (disable format validation)
+    };
   },
 });
 
-// File filter - accept binary files
+// File filter - accept all files (as per requirements)
 const fileFilter = (req, file, cb) => {
-  // Accept common binary file extensions
-  const allowedExtensions = [
-    ".bin",
-    ".elf",
-    ".hex",
-    ".fw",
-    ".rom",
-    ".img",
-    ".out",
-    ".exe",
-    ".so",
-    ".dll",
-    ".dylib",
-    ".a",
-    ".o",
-  ];
+  // Accept all file types
+  queueLogger.info("File upload filter check", {
+    filename: file.originalname,
+    mimetype: file.mimetype,
+    size: file.size,
+  });
 
-  const ext = path.extname(file.originalname).toLowerCase();
-
-  if (allowedExtensions.includes(ext) || !ext) {
-    // No extension might be a valid binary
-    cb(null, true);
-  } else {
-    cb(
-      new Error(
-        `Invalid file type: ${ext}. Only binary files are accepted (${allowedExtensions.join(
-          ", "
-        )})`
-      )
-    );
-  }
+  cb(null, true); // Accept all files
 };
 
-// Create multer instance
+// Create multer instance with Cloudinary storage
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE) || 100 * 1024 * 1024, // 100MB default
+    fileSize: CLOUDINARY_CONFIG.maxFileSize, // 80MB for free tier
   },
 });
 
 /**
- * Calculate file hash (SHA-256)
+ * Calculate file hash (SHA-256) from buffer
  */
 export const calculateFileHash = (filePath) => {
   return new Promise((resolve, reject) => {
@@ -89,6 +77,15 @@ export const calculateFileHash = (filePath) => {
     stream.on("end", () => resolve(hash.digest("hex")));
     stream.on("error", reject);
   });
+};
+
+/**
+ * Calculate file hash from buffer (for Cloudinary files)
+ */
+export const calculateBufferHash = (buffer) => {
+  const hash = crypto.createHash("sha256");
+  hash.update(buffer);
+  return hash.digest("hex");
 };
 
 /**
@@ -140,7 +137,7 @@ export default {
   uploadSingle,
   uploadBatch,
   calculateFileHash,
+  calculateBufferHash,
   deleteFile,
   validateBinaryFile,
-  uploadDir,
 };

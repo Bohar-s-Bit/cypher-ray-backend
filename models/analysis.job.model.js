@@ -24,7 +24,16 @@ const analysisJobSchema = new mongoose.Schema(
     },
     filePath: {
       type: String,
-      required: true,
+      required: false, // Now optional - kept for backwards compatibility
+    },
+    cloudinaryUrl: {
+      type: String,
+      required: false, // Secure URL from Cloudinary
+    },
+    cloudinaryPublicId: {
+      type: String,
+      required: false, // For deletion and management
+      index: true,
     },
     fileSize: {
       type: Number,
@@ -122,6 +131,8 @@ analysisJobSchema.index({ userId: 1, status: 1 });
 analysisJobSchema.index({ fileHash: 1, userId: 1 });
 analysisJobSchema.index({ status: 1, tier: 1, queuedAt: 1 });
 analysisJobSchema.index({ createdAt: -1 });
+analysisJobSchema.index({ cloudinaryPublicId: 1 }); // For Cloudinary operations
+analysisJobSchema.index({ completedAt: 1 }); // For cleanup jobs
 
 // Methods
 analysisJobSchema.methods.updateStatus = async function (status, error = null) {

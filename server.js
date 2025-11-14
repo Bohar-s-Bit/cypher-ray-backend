@@ -16,6 +16,7 @@ import database from "./db/db.js";
 import "./config/redis.js";
 import "./config/queue.js";
 import "./services/queue.worker.js"; // Initialize queue workers
+import { startCleanupService } from "./services/cloudinary.cleanup.js"; // Cloudinary cleanup
 
 // Routes
 import userRoutes from "./routes/user.routes.js";
@@ -165,6 +166,10 @@ httpServer.listen(PORT, () => {
     }`
   );
   console.log(`🔌 WebSocket server ready`);
+  console.log(`🧹 Cloudinary cleanup service starting...`);
+
+  // Start Cloudinary cleanup service (runs daily at 2 AM)
+  startCleanupService();
 
   logger.info("Server started successfully", {
     port: PORT,

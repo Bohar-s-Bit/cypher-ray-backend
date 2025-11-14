@@ -3,6 +3,11 @@ import AnalysisJob from "../models/analysis.job.model.js";
 import analysisService from "../services/analysis.service.js";
 import { refundCreditsForSDK } from "../services/credit.service.js";
 import { deleteFile } from "../utils/file.handler.js";
+import {
+  downloadToTempFile,
+  deleteTempFile,
+  deleteFromCloudinary,
+} from "../utils/cloudinaryHelper.js";
 import { queueLogger } from "../utils/logger.js";
 import { io } from "../server.js";
 
@@ -21,16 +26,26 @@ const tierConcurrency = {
  * Process analysis job
  */
 async function processAnalysisJob(job) {
-  const { jobId, userId, filePath, fileHash, filename, tier } = job.data;
+  const {
+    jobId,
+    userId,
+    cloudinaryUrl,
+    cloudinaryPublicId,
+    fileHash,
+    filename,
+    tier,
+  } = job.data;
 
   queueLogger.info("Processing analysis job", {
     jobId,
     userId,
     filename,
     tier,
+    cloudinaryPublicId,
   });
 
   let analysisJob = null;
+  let tempFilePath = null;
 
   try {
     // Get job from database
@@ -48,13 +63,30 @@ async function processAnalysisJob(job) {
       progress: 10,
     });
 
-    // Update progress: 20% - Starting analysis
+    // Update progress: 20% - Downloading from Cloudinary
     await analysisJob.updateProgress(20);
     await job.progress(20);
 
-    // Call ML service for analysis
+    queueLogger.info("Downloading file from Cloudinary", {
+      jobId,
+      cloudinaryPublicId,
+    });
+
+    // Download file from Cloudinary to temp location
+    tempFilePath = await downloadToTempFile(cloudinaryPublicId, filename);
+
+    queueLogger.info("File downloaded successfully", {
+      jobId,
+      tempFilePath,
+    });
+
+    // Update progress: 40% - Starting analysis
+    await analysisJob.updateProgress(40);
+    await job.progress(40);
+
+    // Call ML service for analysis using temp file
     queueLogger.info("Calling ML service", { jobId, filename });
-    const results = await analysisService.analyzeBinary(filePath, filename);
+    const results = await analysisService.analyzeBinary(tempFilePath, filename);
 
     // Update progress: 75% - Analysis complete
     await analysisJob.updateProgress(75);
@@ -82,8 +114,13 @@ async function processAnalysisJob(job) {
       processingTime: analysisJob.getProcessingTime(),
     });
 
-    // Clean up uploaded file
-    await deleteFile(filePath);
+    // Clean up temp file
+    if (tempFilePath) {
+      await deleteTempFile(tempFilePath);
+    }
+
+    // Note: We keep the file on Cloudinary for 24 hours
+    // Cleanup job will delete it later
 
     return {
       success: true,
@@ -134,9 +171,18 @@ async function processAnalysisJob(job) {
       },
     });
 
-    // Clean up uploaded file
-    if (filePath) {
-      await deleteFile(filePath);
+    // Clean up temp file
+    if (tempFilePath) {
+      await deleteTempFile(tempFilePath);
+    }
+
+    // Delete from Cloudinary immediately on failure
+    if (cloudinaryPublicId) {
+      queueLogger.info("Deleting failed job file from Cloudinary", {
+        jobId,
+        cloudinaryPublicId,
+      });
+      await deleteFromCloudinary(cloudinaryPublicId);
     }
 
     // Re-throw error for Bull to handle retries

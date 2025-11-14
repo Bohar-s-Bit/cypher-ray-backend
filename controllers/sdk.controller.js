@@ -2,11 +2,13 @@ import AnalysisJob from "../models/analysis.job.model.js";
 import { deductCreditsForSDK } from "../services/credit.service.js";
 import {
   calculateFileHash,
+  calculateBufferHash,
   deleteFile,
   validateBinaryFile,
 } from "../utils/file.handler.js";
 import { sdkLogger } from "../utils/logger.js";
 import { sdkAnalysisQueue } from "../config/queue.js";
+import { deleteFromCloudinary } from "../utils/cloudinaryHelper.js";
 import path from "path";
 
 /**
@@ -99,10 +101,13 @@ export const analyzeSingle = async (req, res) => {
       userId: userId.toString(),
       filename: file.originalname,
       size: file.size,
+      cloudinaryUrl: file.path,
+      cloudinaryPublicId: file.filename,
     });
 
-    // Calculate file hash
-    const fileHash = await calculateFileHash(file.path);
+    // For Cloudinary files, we need to use a different approach for hash
+    // Use the Cloudinary etag or calculate from metadata
+    const fileHash = file.etag || `cloudinary-${file.filename}`;
 
     // Check if already analyzed (deduplication)
     const existingJob = await AnalysisJob.findOne({
@@ -112,8 +117,8 @@ export const analyzeSingle = async (req, res) => {
     }).sort({ completedAt: -1 });
 
     if (existingJob) {
-      // Delete uploaded file (not needed)
-      await deleteFile(file.path);
+      // Delete uploaded file from Cloudinary (not needed - duplicate)
+      await deleteFromCloudinary(file.filename);
 
       sdkLogger.info("Returning cached analysis result", {
         userId: userId.toString(),
@@ -136,29 +141,19 @@ export const analyzeSingle = async (req, res) => {
       });
     }
 
-    // Validate binary file
-    const isValid = await validateBinaryFile(file.path);
-    if (!isValid) {
-      await deleteFile(file.path);
-      return res.status(400).json({
-        success: false,
-        message: "Invalid binary file",
-        code: "INVALID_BINARY",
-      });
-    }
-
     // Determine tier and priority
     const userTier = req.user.tier || "tier2";
     const priorityMap = { tier1: 1, tier2: 2 };
     const priority = priorityMap[userTier] || 2;
 
-    // Create analysis job first
+    // Create analysis job with Cloudinary data
     const job = await AnalysisJob.create({
       userId,
       apiKeyId,
       fileHash,
       filename: file.originalname,
-      filePath: file.path,
+      cloudinaryUrl: file.path, // Cloudinary returns secure_url in file.path
+      cloudinaryPublicId: file.filename, // Cloudinary returns public_id in file.filename
       fileSize: file.size,
       status: "queued",
       tier: userTier,
@@ -181,13 +176,14 @@ export const analyzeSingle = async (req, res) => {
       apiKeyId
     );
 
-    // Add to queue
+    // Add to queue with Cloudinary data
     await sdkAnalysisQueue.add(
       userTier, // processor name
       {
         jobId: job._id.toString(),
         userId: userId.toString(),
-        filePath: file.path,
+        cloudinaryUrl: file.path,
+        cloudinaryPublicId: file.filename,
         fileHash,
         filename: file.originalname,
         tier: userTier,
@@ -226,9 +222,9 @@ export const analyzeSingle = async (req, res) => {
       },
     });
   } catch (error) {
-    // Clean up uploaded file on error
-    if (req.file?.path) {
-      await deleteFile(req.file.path);
+    // Clean up uploaded file from Cloudinary on error
+    if (req.file?.filename) {
+      await deleteFromCloudinary(req.file.filename);
     }
 
     sdkLogger.error("Analyze single error", {
@@ -260,9 +256,9 @@ export const analyzeBatch = async (req, res) => {
     }
 
     if (req.files.length > 50) {
-      // Clean up files
+      // Clean up files from Cloudinary
       for (const file of req.files) {
-        await deleteFile(file.path);
+        await deleteFromCloudinary(file.filename);
       }
 
       return res.status(400).json({
@@ -290,8 +286,8 @@ export const analyzeBatch = async (req, res) => {
     // Process each file
     for (const file of files) {
       try {
-        // Calculate hash
-        const fileHash = await calculateFileHash(file.path);
+        // For Cloudinary files, use etag or public_id as hash
+        const fileHash = file.etag || `cloudinary-${file.filename}`;
 
         // Check for existing analysis
         const existingJob = await AnalysisJob.findOne({
@@ -301,8 +297,8 @@ export const analyzeBatch = async (req, res) => {
         }).sort({ completedAt: -1 });
 
         if (existingJob) {
-          // Cached - no credit charge
-          await deleteFile(file.path);
+          // Cached - no credit charge, delete from Cloudinary
+          await deleteFromCloudinary(file.filename);
 
           results.push({
             filename: file.originalname,
@@ -319,13 +315,14 @@ export const analyzeBatch = async (req, res) => {
           continue;
         }
 
-        // Create job first
+        // Create job with Cloudinary data
         const job = await AnalysisJob.create({
           userId,
           apiKeyId,
           fileHash,
           filename: file.originalname,
-          filePath: file.path,
+          cloudinaryUrl: file.path,
+          cloudinaryPublicId: file.filename,
           fileSize: file.size,
           status: "queued",
           tier: userTier,
@@ -343,13 +340,14 @@ export const analyzeBatch = async (req, res) => {
         await deductCreditsForSDK(userId, 1, job._id.toString(), apiKeyId);
         creditsCharged += 1;
 
-        // Add to queue
+        // Add to queue with Cloudinary data
         await sdkAnalysisQueue.add(
           userTier,
           {
             jobId: job._id.toString(),
             userId: userId.toString(),
-            filePath: file.path,
+            cloudinaryUrl: file.path,
+            cloudinaryPublicId: file.filename,
             fileHash,
             filename: file.originalname,
             tier: userTier,
@@ -373,7 +371,7 @@ export const analyzeBatch = async (req, res) => {
           },
         });
       } catch (fileError) {
-        await deleteFile(file.path);
+        await deleteFromCloudinary(file.filename);
         results.push({
           filename: file.originalname,
           error: fileError.message,
