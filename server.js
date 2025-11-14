@@ -4,21 +4,59 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import morgan from "morgan";
+import { createServer } from "http";
+import { Server } from "socket.io";
 
 dotenv.config();
 
 // Database connection
 import database from "./db/db.js";
 
+// Redis and Queue initialization
+import "./config/redis.js";
+import "./config/queue.js";
+import "./services/queue.worker.js"; // Initialize queue workers
+
 // Routes
 import userRoutes from "./routes/user.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import sdkRoutes from "./routes/sdk.routes.js";
+
+// Logger
+import logger from "./utils/logger.js";
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = process.env.PORT || 3000;
 
 // Connect to the database
 database.connect();
+
+// Initialize Socket.IO
+export const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true,
+  },
+});
+
+io.on("connection", (socket) => {
+  logger.info("Client connected to WebSocket", { socketId: socket.id });
+
+  socket.on("subscribe-job", (jobId) => {
+    socket.join(`job:${jobId}`);
+    logger.info("Client subscribed to job", { jobId, socketId: socket.id });
+  });
+
+  socket.on("subscribe-user", (userId) => {
+    socket.join(`user:${userId}`);
+    logger.info("Client subscribed to user", { userId, socketId: socket.id });
+  });
+
+  socket.on("disconnect", () => {
+    logger.info("Client disconnected", { socketId: socket.id });
+  });
+});
 
 /**
  * Middleware
@@ -70,10 +108,22 @@ app.get("/", (req, res) => {
   });
 });
 
+// Health check endpoint for CI/CD and monitoring
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || "development",
+  });
+});
+
 // API Routes
 app.use("/api/auth", userRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/sdk", sdkRoutes); // SDK API routes
 
 /**
  * Error Handling
@@ -89,7 +139,11 @@ app.use((req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error("Error:", err);
+  logger.error("Global error handler", {
+    error: err.message,
+    stack: err.stack,
+    path: req.path,
+  });
 
   res.status(err.status || 500).json({
     success: false,
@@ -102,7 +156,7 @@ app.use((err, req, res, next) => {
  * Start Server
  */
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
   console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(
@@ -110,4 +164,19 @@ app.listen(PORT, () => {
       process.env.FRONTEND_URL || "http://localhost:3000"
     }`
   );
+  console.log(`🔌 WebSocket server ready`);
+  
+  logger.info("Server started successfully", {
+    port: PORT,
+    environment: process.env.NODE_ENV || "development",
+  });
+});
+
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  logger.info("SIGTERM received, shutting down gracefully");
+  httpServer.close(() => {
+    logger.info("Server closed");
+    process.exit(0);
+  });
 });

@@ -9,6 +9,9 @@ import {
   updateUserStatus,
   deleteUser,
   getPlatformStats,
+  createApiKey,
+  getUserApiKeys,
+  revokeApiKey,
 } from "../controllers/admin.controllers.js";
 import {
   loginValidation,
@@ -63,5 +66,28 @@ router.patch(
 
 // Delete user
 router.delete("/users/:userId", adminAuth, userIdValidation, deleteUser);
+
+/**
+ * Admin API Key Management Routes
+ */
+
+// Create API key for user
+router.post(
+  "/users/:userId/api-keys",
+  adminAuth,
+  userIdValidation,
+  createApiKey
+);
+
+// Get all API keys for a user
+router.get(
+  "/users/:userId/api-keys",
+  adminAuth,
+  userIdValidation,
+  getUserApiKeys
+);
+
+// Revoke API key
+router.delete("/api-keys/:keyId", adminAuth, revokeApiKey);
 
 export default router;

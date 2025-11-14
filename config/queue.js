@@ -1,0 +1,64 @@
+import Queue from "bull";
+import redisClient from "./redis.js";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+// Queue configuration
+const queueConfig = {
+  redis: {
+    host: process.env.REDIS_HOST || "localhost",
+    port: parseInt(process.env.REDIS_PORT) || 6379,
+    password: process.env.REDIS_PASSWORD || undefined,
+  },
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 10000, // 10 seconds
+    },
+    timeout: 600000, // 10 minutes
+    removeOnComplete: false,
+    removeOnFail: false,
+  },
+};
+
+// Create SDK Analysis Queue
+export const sdkAnalysisQueue = new Queue("sdk-analysis", queueConfig);
+
+// Queue event handlers
+sdkAnalysisQueue.on("error", (error) => {
+  console.error("❌ Queue error:", error);
+});
+
+sdkAnalysisQueue.on("waiting", (jobId) => {
+  console.log(`⏳ Job ${jobId} is waiting`);
+});
+
+sdkAnalysisQueue.on("active", (job) => {
+  console.log(`🔄 Job ${job.id} started processing`);
+});
+
+sdkAnalysisQueue.on("completed", (job, result) => {
+  console.log(`✅ Job ${job.id} completed successfully`);
+});
+
+sdkAnalysisQueue.on("failed", (job, err) => {
+  console.error(`❌ Job ${job.id} failed:`, err.message);
+});
+
+sdkAnalysisQueue.on("stalled", (job) => {
+  console.warn(`⚠️ Job ${job.id} stalled`);
+});
+
+// Cleanup old jobs periodically (every hour)
+setInterval(async () => {
+  const gracePeriod = 7 * 24 * 60 * 60 * 1000; // 7 days
+  await sdkAnalysisQueue.clean(gracePeriod, "completed");
+  await sdkAnalysisQueue.clean(gracePeriod, "failed");
+}, 60 * 60 * 1000);
+
+export default {
+  sdkAnalysisQueue,
+  queueConfig,
+};

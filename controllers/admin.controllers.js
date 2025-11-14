@@ -1,4 +1,5 @@
 import User from "../models/user.model.js";
+import ApiKey from "../models/api.key.model.js";
 import { generateToken } from "../utils/jwt.js";
 import {
   createUserService,
@@ -293,6 +294,179 @@ export const getPlatformStats = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to retrieve platform statistics",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+/**
+ * Create API Key for user (SDK Access)
+ * POST /api/admin/users/:userId/api-keys
+ */
+export const createApiKey = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name, expiresInDays, permissions } = req.body;
+
+    // Validate user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Calculate expiration date
+    let expiresAt = null;
+    if (expiresInDays && expiresInDays > 0) {
+      expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+    }
+
+    // Default permissions
+    const defaultPermissions = [
+      "sdk:analyze",
+      "sdk:batch",
+      "sdk:results",
+      "sdk:credits",
+      "sdk:check-hash",
+    ];
+
+    // Generate API key
+    const key = ApiKey.generateKey();
+
+    const apiKey = await ApiKey.create({
+      key,
+      userId,
+      name: name || "SDK API Key",
+      isActive: true,
+      expiresAt,
+      permissions: permissions || defaultPermissions,
+      metadata: {
+        createdFrom: "admin-panel",
+        ipAddress: req.ip,
+        userAgent: req.get("user-agent"),
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "API key created successfully",
+      data: {
+        apiKey: {
+          id: apiKey._id,
+          key: apiKey.key,
+          name: apiKey.name,
+          userId: apiKey.userId,
+          userName: user.username,
+          userEmail: user.email,
+          isActive: apiKey.isActive,
+          expiresAt: apiKey.expiresAt,
+          permissions: apiKey.permissions,
+          createdAt: apiKey.createdAt,
+        },
+        warning:
+          "Store this API key securely. It won't be shown again in full.",
+      },
+    });
+  } catch (error) {
+    console.error("Create API key error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to create API key",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+/**
+ * Get all API keys for a user
+ * GET /api/admin/users/:userId/api-keys
+ */
+export const getUserApiKeys = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Validate user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const apiKeys = await ApiKey.find({ userId }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      message: "API keys retrieved successfully",
+      data: {
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+        },
+        apiKeys: apiKeys.map((key) => ({
+          id: key._id,
+          name: key.name,
+          keyPreview: `${key.key.substring(0, 12)}...${key.key.substring(
+            key.key.length - 4
+          )}`,
+          isActive: key.isActive,
+          expiresAt: key.expiresAt,
+          lastUsedAt: key.lastUsedAt,
+          requestCount: key.requestCount,
+          permissions: key.permissions,
+          createdAt: key.createdAt,
+        })),
+        total: apiKeys.length,
+      },
+    });
+  } catch (error) {
+    console.error("Get user API keys error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve API keys",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+/**
+ * Revoke (deactivate) API key
+ * DELETE /api/admin/api-keys/:keyId
+ */
+export const revokeApiKey = async (req, res) => {
+  try {
+    const { keyId } = req.params;
+
+    const apiKey = await ApiKey.findById(keyId);
+    if (!apiKey) {
+      return res.status(404).json({
+        success: false,
+        message: "API key not found",
+      });
+    }
+
+    apiKey.isActive = false;
+    await apiKey.save();
+
+    res.status(200).json({
+      success: true,
+      message: "API key revoked successfully",
+      data: {
+        id: apiKey._id,
+        name: apiKey.name,
+        isActive: apiKey.isActive,
+      },
+    });
+  } catch (error) {
+    console.error("Revoke API key error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to revoke API key",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
