@@ -7,20 +7,28 @@ dotenv.config();
 // Queue configuration - support both URL and host-based Redis
 let redisConfig;
 
-console.log("🔍 Queue Config - REDIS_URL:", process.env.REDIS_URL ? "SET" : "NOT SET");
-
 if (process.env.REDIS_URL) {
-  // URL-based connection (Upstash, Railway, etc.)
-  console.log("✅ Using REDIS_URL for queue");
-  redisConfig = process.env.REDIS_URL;
+  // URL-based connection (Upstash, Railway, etc.) with TLS support
+  const url = new URL(process.env.REDIS_URL);
+  redisConfig = {
+    host: url.hostname,
+    port: parseInt(url.port) || 6379,
+    password: url.password,
+    tls: process.env.REDIS_URL.startsWith("rediss://")
+      ? {
+          rejectUnauthorized: false,
+        }
+      : undefined,
+  };
+  console.log("✅ Using REDIS_URL for queue with TLS");
 } else {
   // Host-based connection (local development)
-  console.log("⚠️  Using localhost Redis for queue");
   redisConfig = {
     host: process.env.REDIS_HOST || "localhost",
     port: parseInt(process.env.REDIS_PORT) || 6379,
     password: process.env.REDIS_PASSWORD || undefined,
   };
+  console.log("⚠️  Using localhost Redis for queue");
 }
 
 const queueConfig = {
