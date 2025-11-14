@@ -273,3 +273,110 @@ export const getTierInfo = (tierName) => {
 
   return tiers[tierName] || tiers.tier2;
 };
+
+/**
+ * Deduct credits for SDK analysis (atomic operation)
+ * @param {String} userId - User ID
+ * @param {Number} amount - Credits to deduct
+ * @param {String} jobId - Analysis job ID
+ * @param {String} apiKeyId - API key ID
+ * @returns {Object} Updated user and transaction
+ */
+export const deductCreditsForSDK = async (
+  userId,
+  amount,
+  jobId,
+  apiKeyId = null
+) => {
+  try {
+    // Use MongoDB transaction for atomicity
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Check if user has enough credits
+    if (user.credits.remaining < amount) {
+      throw new Error("Insufficient credits");
+    }
+
+    const balanceBefore = user.credits.remaining;
+
+    // Update credits atomically
+    user.credits.used += amount;
+    user.credits.remaining -= amount;
+
+    const balanceAfter = user.credits.remaining;
+
+    await user.save();
+
+    // Log transaction
+    const transaction = await CreditTransaction.create({
+      userId,
+      type: "debit",
+      amount,
+      description: `SDK Binary Analysis - Job ${jobId}`,
+      jobId,
+      apiKeyId,
+      balanceBefore,
+      balanceAfter,
+    });
+
+    return {
+      success: true,
+      user,
+      transaction,
+    };
+  } catch (error) {
+    throw new Error(`Failed to deduct SDK credits: ${error.message}`);
+  }
+};
+
+/**
+ * Refund credits for failed SDK analysis
+ * @param {String} userId - User ID
+ * @param {Number} amount - Credits to refund
+ * @param {String} jobId - Analysis job ID
+ * @param {String} reason - Refund reason
+ * @returns {Object} Updated user and transaction
+ */
+export const refundCreditsForSDK = async (userId, amount, jobId, reason) => {
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const balanceBefore = user.credits.remaining;
+
+    // Refund credits
+    user.credits.used -= amount;
+    user.credits.remaining += amount;
+
+    // Ensure values don't go negative
+    user.credits.used = Math.max(0, user.credits.used);
+
+    const balanceAfter = user.credits.remaining;
+
+    await user.save();
+
+    // Log refund transaction
+    const transaction = await CreditTransaction.create({
+      userId,
+      type: "refund",
+      amount,
+      description: `SDK Analysis Refund - ${reason} - Job ${jobId}`,
+      jobId,
+      balanceBefore,
+      balanceAfter,
+    });
+
+    return {
+      success: true,
+      user,
+      transaction,
+    };
+  } catch (error) {
+    throw new Error(`Failed to refund SDK credits: ${error.message}`);
+  }
+};
