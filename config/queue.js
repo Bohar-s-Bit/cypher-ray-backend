@@ -7,11 +7,15 @@ dotenv.config();
 // Queue configuration - support both URL and host-based Redis
 let redisConfig;
 
+console.log("🔍 Queue Config - REDIS_URL:", process.env.REDIS_URL ? "SET" : "NOT SET");
+
 if (process.env.REDIS_URL) {
   // URL-based connection (Upstash, Railway, etc.)
+  console.log("✅ Using REDIS_URL for queue");
   redisConfig = process.env.REDIS_URL;
 } else {
   // Host-based connection (local development)
+  console.log("⚠️  Using localhost Redis for queue");
   redisConfig = {
     host: process.env.REDIS_HOST || "localhost",
     port: parseInt(process.env.REDIS_PORT) || 6379,
