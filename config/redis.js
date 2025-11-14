@@ -3,27 +3,55 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const redisConfig = {
-  host: process.env.REDIS_HOST || "localhost",
-  port: parseInt(process.env.REDIS_PORT) || 6379,
-  password: process.env.REDIS_PASSWORD || undefined,
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: true,
-  retryStrategy: (times) => {
-    const delay = Math.min(times * 50, 2000);
-    return delay;
-  },
-  reconnectOnError: (err) => {
-    const targetError = "READONLY";
-    if (err.message.includes(targetError)) {
-      return true;
-    }
-    return false;
-  },
-};
+// Support both URL-based (Upstash, Railway) and host-based (local, Redis Cloud) configs
+let redisClient;
 
-// Create Redis client
-const redisClient = new Redis(redisConfig);
+if (process.env.REDIS_URL) {
+  // URL-based connection (for Upstash, Railway, etc.)
+  redisClient = new Redis(process.env.REDIS_URL, {
+    maxRetriesPerRequest: 3,
+    enableReadyCheck: true,
+    retryStrategy: (times) => {
+      const delay = Math.min(times * 50, 2000);
+      return delay;
+    },
+    reconnectOnError: (err) => {
+      const targetError = "READONLY";
+      if (err.message.includes(targetError)) {
+        return true;
+      }
+      return false;
+    },
+    // TLS config for secure connections (Upstash uses TLS)
+    tls: process.env.REDIS_URL.startsWith("rediss://")
+      ? {
+          rejectUnauthorized: false,
+        }
+      : undefined,
+  });
+} else {
+  // Host-based connection (for local development or Redis Cloud)
+  const redisConfig = {
+    host: process.env.REDIS_HOST || "localhost",
+    port: parseInt(process.env.REDIS_PORT) || 6379,
+    password: process.env.REDIS_PASSWORD || undefined,
+    maxRetriesPerRequest: 3,
+    enableReadyCheck: true,
+    retryStrategy: (times) => {
+      const delay = Math.min(times * 50, 2000);
+      return delay;
+    },
+    reconnectOnError: (err) => {
+      const targetError = "READONLY";
+      if (err.message.includes(targetError)) {
+        return true;
+      }
+      return false;
+    },
+  };
+
+  redisClient = new Redis(redisConfig);
+}
 
 redisClient.on("connect", () => {
   console.log("🔴 Redis connected successfully");
