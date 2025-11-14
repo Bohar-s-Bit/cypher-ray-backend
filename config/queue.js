@@ -4,13 +4,23 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Queue configuration
-const queueConfig = {
-  redis: {
+// Queue configuration - support both URL and host-based Redis
+let redisConfig;
+
+if (process.env.REDIS_URL) {
+  // URL-based connection (Upstash, Railway, etc.)
+  redisConfig = process.env.REDIS_URL;
+} else {
+  // Host-based connection (local development)
+  redisConfig = {
     host: process.env.REDIS_HOST || "localhost",
     port: parseInt(process.env.REDIS_PORT) || 6379,
     password: process.env.REDIS_PASSWORD || undefined,
-  },
+  };
+}
+
+const queueConfig = {
+  redis: redisConfig,
   defaultJobOptions: {
     attempts: 3,
     backoff: {
