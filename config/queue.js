@@ -19,6 +19,19 @@ if (process.env.REDIS_URL) {
           rejectUnauthorized: false,
         }
       : undefined,
+    enableReadyCheck: false,
+    maxRetriesPerRequest: 20,
+    retryStrategy: (times) => {
+      const delay = Math.min(times * 50, 2000);
+      return delay;
+    },
+    reconnectOnError: (err) => {
+      const targetError = "READONLY";
+      if (err.message.includes(targetError)) {
+        return true;
+      }
+      return false;
+    },
   };
   console.log("✅ Using REDIS_URL for queue with TLS");
 } else {
