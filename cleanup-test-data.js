@@ -23,8 +23,7 @@ async function cleanupTestData() {
     console.log("\n🧹 Starting test data cleanup...\n");
 
     // Connect to MongoDB
-    const MONGO_URI =
-      process.env.MONGO_URI || "mongodb://localhost:27017/cypher_ray";
+    const MONGO_URI = process.env.MONGO_URI;
     await mongoose.connect(MONGO_URI);
     console.log("✓ Connected to MongoDB");
 
