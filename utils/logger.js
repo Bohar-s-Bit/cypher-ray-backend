@@ -32,20 +32,31 @@ const logger = winston.createLogger({
   format: logFormat,
   defaultMeta: { service: "cypherray-backend" },
   transports: [
-    // Write all logs to combined.log
+    // Console transport (always works in serverless)
+    new winston.transports.Console({
+      format: consoleFormat,
+    }),
+  ],
+});
+
+// Only add file transports if not in serverless environment (Vercel)
+if (!process.env.VERCEL && process.env.NODE_ENV !== "production") {
+  logger.add(
     new winston.transports.File({
       filename: path.join(__dirname, "../logs/combined.log"),
       maxsize: 5242880, // 5MB
       maxFiles: 30,
-    }),
-    // Write errors to error.log
+    })
+  );
+  logger.add(
     new winston.transports.File({
       filename: path.join(__dirname, "../logs/error.log"),
       level: "error",
       maxsize: 5242880,
       maxFiles: 30,
-    }),
-    // Write SDK specific logs
+    })
+  );
+  logger.add(
     new winston.transports.File({
       filename: path.join(__dirname, "../logs/sdk.log"),
       maxsize: 5242880,
@@ -54,8 +65,9 @@ const logger = winston.createLogger({
         winston.format((info) => (info.context === "sdk" ? info : false))(),
         logFormat
       ),
-    }),
-    // Write queue logs
+    })
+  );
+  logger.add(
     new winston.transports.File({
       filename: path.join(__dirname, "../logs/queue.log"),
       maxsize: 5242880,
@@ -64,15 +76,6 @@ const logger = winston.createLogger({
         winston.format((info) => (info.context === "queue" ? info : false))(),
         logFormat
       ),
-    }),
-  ],
-});
-
-// Add console transport in development
-if (process.env.NODE_ENV !== "production") {
-  logger.add(
-    new winston.transports.Console({
-      format: consoleFormat,
     })
   );
 }
