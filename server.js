@@ -31,6 +31,9 @@ const app = express();
 const httpServer = createServer(app);
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy - required for Render, Railway, and other reverse proxies
+app.set('trust proxy', 1);
+
 // Connect to the database
 database.connect();
 
