@@ -11,7 +11,7 @@ const analysisJobSchema = new mongoose.Schema(
     apiKeyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ApiKey",
-      required: true,
+      required: false, // Optional - not needed for user dashboard uploads
     },
     fileHash: {
       type: String,
