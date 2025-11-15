@@ -49,6 +49,7 @@
     "nodemailer": "^6.10.1",
     "nodemon": "^3.1.10",
     "rate-limit-redis": "^4.2.0",
+    "razorpay": "^2.9.6",
     "socket.io": "^4.6.1",
     "uuid": "^9.0.1",
     "winston": "^3.11.0"

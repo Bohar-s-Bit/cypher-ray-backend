@@ -23,6 +23,7 @@ import { startKeepAlive } from "./services/keep-alive.js"; // Keep services awak
 import userRoutes from "./routes/user.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import sdkRoutes from "./routes/sdk.routes.js";
+import paymentRoutes from "./routes/payment.routes.js";
 
 // Logger
 import logger from "./utils/logger.js";
@@ -129,6 +130,7 @@ app.use("/api/auth", userRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/sdk", sdkRoutes); // SDK API routes
+app.use("/api/payment", paymentRoutes); // Payment API routes
 
 /**
  * Error Handling
