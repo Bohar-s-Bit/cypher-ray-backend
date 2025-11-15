@@ -348,22 +348,26 @@ export const getUserAnalysisHistory = async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .select('_id filename status tier progress results createdAt completedAt error'),
-      AnalysisJob.countDocuments({ userId })
+        .select(
+          "_id filename status tier progress results createdAt completedAt error"
+        ),
+      AnalysisJob.countDocuments({ userId }),
     ]);
 
     res.status(200).json({
       success: true,
       data: {
-        jobs: jobs.map(job => ({
+        jobs: jobs.map((job) => ({
           jobId: job._id.toString(),
           filename: job.filename,
           status: job.status,
           tier: job.tier,
           progress: job.progress,
-          hasVulnerabilities: job.results?.vulnerability_assessment?.has_vulnerabilities,
+          hasVulnerabilities:
+            job.results?.vulnerability_assessment?.has_vulnerabilities,
           severity: job.results?.vulnerability_assessment?.severity,
-          vulnerabilityCount: job.results?.vulnerability_assessment?.vulnerabilities?.length || 0,
+          vulnerabilityCount:
+            job.results?.vulnerability_assessment?.vulnerabilities?.length || 0,
           createdAt: job.createdAt,
           completedAt: job.completedAt,
           error: job.error,
@@ -372,8 +376,8 @@ export const getUserAnalysisHistory = async (req, res) => {
           total,
           page,
           limit,
-          totalPages: Math.ceil(total / limit)
-        }
+          totalPages: Math.ceil(total / limit),
+        },
       },
     });
   } catch (error) {
