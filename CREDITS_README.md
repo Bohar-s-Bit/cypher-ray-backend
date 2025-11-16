@@ -80,9 +80,9 @@ Server will start on `http://localhost:6005`
 Razorpay provides test cards for development. **No real money is charged!**
 
 ### ✅ Successful Payment
-
+ 
 ```
-Card Number: 4111 1111 1111 1111
+Card Number: 5267 3181 8797 5449
 CVV: Any 3 digits (e.g., 123)
 Expiry: Any future date (e.g., 12/25)
 Name: Any name
