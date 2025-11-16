@@ -219,14 +219,8 @@ export const verifyPayment = async (req, res) => {
       razorpayPayment.status === "captured" ? "success" : "pending";
     payment.paymentMethod = razorpayPayment.method || "unknown";
 
-    // Add card details if card payment
-    if (razorpayPayment.card) {
-      payment.cardDetails = {
-        last4: razorpayPayment.card.last4,
-        network: razorpayPayment.card.network,
-        type: razorpayPayment.card.type,
-      };
-    }
+    // Skip card details to avoid schema validation issues
+    // Card details can be fetched from Razorpay if needed later
 
     if (useSession) {
       await payment.save({ session });
@@ -380,13 +374,7 @@ export const handleWebhook = async (req, res) => {
           payment.status = "success";
           payment.paymentMethod = payload.method;
 
-          if (payload.card) {
-            payment.cardDetails = {
-              last4: payload.card.last4,
-              network: payload.card.network,
-              type: payload.card.type,
-            };
-          }
+          // Skip card details to avoid schema validation issues
 
           if (useSession) {
             await payment.save({ session });
