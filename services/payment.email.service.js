@@ -24,95 +24,147 @@ export const sendPaymentSuccessEmail = async (email, paymentDetails) => {
     const result = await resend.emails.send({
       from: `${process.env.EMAIL_FROM_NAME} <${process.env.EMAIL_FROM}>`,
       to: email,
-      subject: "✅ Payment Successful - Credits Added | Cypher-Ray",
+      subject: "Payment Successful - Credits Added | Cypher-Ray",
       html: `
       <!DOCTYPE html>
       <html>
       <head>
         <style>
           body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
+            color: #1f2937;
+            margin: 0;
+            padding: 0;
+            background-color: #f9fafb;
           }
           .container {
             max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f9f9f9;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(45, 27, 71, 0.1);
           }
           .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2d1b47 0%, #4a0582 50%, #7808d0 100%);
             color: white;
-            padding: 30px;
+            padding: 40px 30px;
             text-align: center;
-            border-radius: 10px 10px 0 0;
+          }
+          .header h1 {
+            margin: 10px 0;
+            font-size: 28px;
+            font-weight: 600;
+          }
+          .header p {
+            margin: 0;
+            font-size: 16px;
+            opacity: 0.95;
           }
           .content {
             background: white;
-            padding: 30px;
-            border-radius: 0 0 10px 10px;
+            padding: 40px 30px;
           }
-          .success-icon {
-            font-size: 48px;
-            margin-bottom: 20px;
+          .content p {
+            color: #4b5563;
+            margin: 0 0 15px 0;
+            font-size: 15px;
+          }
+          .credits-highlight {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 28px;
+            font-weight: 700;
+            border-radius: 10px;
+            margin: 30px 0;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
           }
           .details {
-            background: #f0f7ff;
-            padding: 20px;
-            border-left: 4px solid #4CAF50;
-            margin: 20px 0;
+            background: #f9fafb;
+            padding: 24px;
+            border-radius: 10px;
+            margin: 24px 0;
+            border: 2px solid #e5e7eb;
           }
           .details-row {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e0e0e0;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
           }
           .details-row:last-child {
             border-bottom: none;
           }
           .label {
-            font-weight: bold;
-            color: #666;
+            font-weight: 600;
+            color: #6b7280;
+            font-size: 14px;
           }
           .value {
-            color: #333;
+            color: #1f2937;
             text-align: right;
-          }
-          .credits-highlight {
-            background: #4CAF50;
-            color: white;
-            padding: 15px;
-            text-align: center;
-            font-size: 24px;
-            font-weight: bold;
-            border-radius: 5px;
-            margin: 20px 0;
-          }
-          .footer {
-            text-align: center;
-            margin-top: 30px;
-            color: #666;
-            font-size: 12px;
+            font-weight: 500;
+            font-size: 14px;
           }
           .button {
             display: inline-block;
-            padding: 12px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #7c3aed 0%, #7808d0 100%);
+            color: #ffffff !important;
             text-decoration: none;
-            border-radius: 5px;
-            margin-top: 20px;
+            border-radius: 8px;
+            margin-top: 24px;
+            font-weight: 600;
+            font-size: 15px;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+          }
+          .logo {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 20px;
+          }
+          .success-badge {
+            background: #10b981;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            display: inline-block;
+            margin-bottom: 15px;
+          }
+          .failed-badge {
+            background: #dc2626;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            display: inline-block;
+            margin-bottom: 15px;
+          }
+          .footer {
+            background: #f9fafb;
+            text-align: center;
+            padding: 30px;
+            color: #6b7280;
+            font-size: 13px;
+            border-top: 1px solid #e5e7eb;
+          }
+          .footer p {
+            margin: 8px 0;
           }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <div class="success-icon">✅</div>
-            <h1>Payment Successful!</h1>
-            <p>Your credits have been added</p>
+            <img src="https://raw.githubusercontent.com/Bohar-s-Bit/cypher-ray-backend/main/assets/logo.png" alt="Cypher-Ray" class="logo" />
+            <div class="success-badge">Payment Successful</div>
+            <h1>Credits Added to Your Account</h1>
           </div>
           
           <div class="content">
@@ -126,25 +178,25 @@ export const sendPaymentSuccessEmail = async (email, paymentDetails) => {
             
             <div class="details">
               <div class="details-row">
-                <span class="label">Plan</span>
+                <span class="label">Plan </span>
                 <span class="value">${planName}</span>
               </div>
               <div class="details-row">
-                <span class="label">Credits</span>
+                <span class="label">Credits </span>
                 <span class="value">${creditsAmount}</span>
               </div>
               <div class="details-row">
-                <span class="label">Amount Paid</span>
+                <span class="label">Amount Paid </span>
                 <span class="value">₹${(amount / 100).toLocaleString(
                   "en-IN"
                 )}</span>
               </div>
               <div class="details-row">
-                <span class="label">Payment ID</span>
+                <span class="label">Payment ID </span>
                 <span class="value">${paymentId}</span>
               </div>
               <div class="details-row">
-                <span class="label">Date & Time</span>
+                <span class="label">Date & Time </span>
                 <span class="value">${new Date(transactionDate).toLocaleString(
                   "en-IN",
                   {
@@ -160,14 +212,14 @@ export const sendPaymentSuccessEmail = async (email, paymentDetails) => {
             <center>
               <a href="${
                 process.env.FRONTEND_URL
-              }/dashboard" class="button">Go to Dashboard</a>
+              }/dashboard" class="button" style="color: #ffffff">Go to Dashboard</a>
             </center>
-            
-            <div class="footer">
-              <p>This is an automated email from Cypher-Ray. Please do not reply to this email.</p>
-              <p>If you did not make this payment, please contact us immediately.</p>
-              <p>&copy; 2025 Cypher-Ray. All rights reserved.</p>
-            </div>
+          </div>
+          
+          <div class="footer">
+            <p>This is an automated email from Cypher-Ray. Please do not reply to this email.</p>
+            <p>If you did not make this payment, please contact us immediately.</p>
+            <p><strong>&copy; 2025 Cypher-Ray. All rights reserved.</strong></p>
           </div>
         </div>
       </body>
@@ -209,106 +261,165 @@ export const sendPaymentFailedEmail = async (email, failureDetails) => {
   const mailOptions = {
     from: `${process.env.EMAIL_FROM_NAME} <${process.env.EMAIL_FROM}>`,
     to: email,
-    subject: "❌ Payment Failed - Please Try Again | Cypher-Ray",
+    subject: "Payment Failed - Please Try Again | Cypher-Ray",
     html: `
       <!DOCTYPE html>
       <html>
       <head>
         <style>
           body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
+            color: #1f2937;
+            margin: 0;
+            padding: 0;
+            background-color: #f9fafb;
           }
           .container {
             max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f9f9f9;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(45, 27, 71, 0.1);
           }
           .header {
-            background: linear-gradient(135deg, #f12711 0%, #f5af19 100%);
+            background: linear-gradient(135deg, #dc2626 0%, #ea580c 100%);
             color: white;
-            padding: 30px;
+            padding: 40px 30px;
             text-align: center;
-            border-radius: 10px 10px 0 0;
+          }
+          .header h1 {
+            margin: 10px 0;
+            font-size: 28px;
+            font-weight: 600;
+          }
+          .header p {
+            margin: 0;
+            font-size: 16px;
+            opacity: 0.95;
           }
           .content {
             background: white;
-            padding: 30px;
-            border-radius: 0 0 10px 10px;
+            padding: 40px 30px;
           }
-          .failed-icon {
-            font-size: 48px;
-            margin-bottom: 20px;
+          .content p {
+            color: #4b5563;
+            margin: 0 0 15px 0;
+            font-size: 15px;
           }
           .details {
-            background: #fff3cd;
-            padding: 20px;
-            border-left: 4px solid #f44336;
-            margin: 20px 0;
+            background: #fef3c7;
+            padding: 24px;
+            border-radius: 10px;
+            margin: 24px 0;
+            border: 2px solid #fbbf24;
           }
           .details-row {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #e0e0e0;
+            padding: 12px 0;
+            border-bottom: 1px solid #fde68a;
           }
           .details-row:last-child {
             border-bottom: none;
           }
           .label {
-            font-weight: bold;
-            color: #666;
+            font-weight: 600;
+            color: #92400e;
+            font-size: 14px;
           }
           .value {
-            color: #333;
+            color: #78350f;
             text-align: right;
+            font-weight: 500;
+            font-size: 14px;
           }
           .reason {
-            background: #ffebee;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-            color: #d32f2f;
-          }
-          .footer {
-            text-align: center;
-            margin-top: 30px;
-            color: #666;
-            font-size: 12px;
+            background: #fee2e2;
+            border-left: 4px solid #dc2626;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 24px 0;
+            color: #991b1b;
+            font-weight: 500;
           }
           .button {
             display: inline-block;
-            padding: 12px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #7c3aed 0%, #7808d0 100%);
+            color: #ffffff !important;
             text-decoration: none;
-            border-radius: 5px;
-            margin-top: 20px;
+            border-radius: 8px;
+            margin-top: 24px;
+            font-weight: 600;
+            font-size: 15px;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+          }
+          .logo {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 20px;
+          }
+          .success-badge {
+            background: #10b981;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            display: inline-block;
+            margin-bottom: 15px;
+          }
+          .failed-badge {
+            background: #dc2626;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            display: inline-block;
+            margin-bottom: 15px;
           }
           .tips {
-            background: #e3f2fd;
+            background: #ede9fe;
+            border-left: 4px solid #a855f7;
             padding: 20px;
-            border-radius: 5px;
-            margin-top: 20px;
+            border-radius: 8px;
+            margin: 24px 0;
           }
           .tips h3 {
-            color: #1976d2;
-            margin-top: 0;
+            color: #6b21a8;
+            margin: 0 0 12px 0;
+            font-size: 16px;
           }
           .tips ul {
-            margin: 10px 0;
+            margin: 0;
             padding-left: 20px;
+            color: #4b5563;
+          }
+          .tips li {
+            margin: 8px 0;
+          }
+          .footer {
+            background: #f9fafb;
+            text-align: center;
+            padding: 30px;
+            color: #6b7280;
+            font-size: 13px;
+            border-top: 1px solid #e5e7eb;
+          }
+          .footer p {
+            margin: 8px 0;
           }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <div class="failed-icon">❌</div>
-            <h1>Payment Failed</h1>
-            <p>Your payment could not be processed</p>
+            <img src="https://raw.githubusercontent.com/Bohar-s-Bit/cypher-ray-backend/main/assets/logo.png" alt="Cypher-Ray" class="logo" />
+            <div class="failed-badge">Payment Failed</div>
+            <h1>Payment Could Not Be Processed</h1>
           </div>
           
           <div class="content">
@@ -350,7 +461,7 @@ export const sendPaymentFailedEmail = async (email, failureDetails) => {
             }
             
             <div class="tips">
-              <h3>💡 What to do next?</h3>
+              <h3>What to do next?</h3>
               <ul>
                 <li>Check if you have sufficient balance in your account</li>
                 <li>Verify your card details are correct</li>
@@ -363,16 +474,16 @@ export const sendPaymentFailedEmail = async (email, failureDetails) => {
             <center>
               <a href="${
                 process.env.FRONTEND_URL
-              }/credits" class="button">Try Again</a>
+              }/credits" class="button" style="color: #ffffff">Try Again</a>
             </center>
             
-            <p style="margin-top: 30px;">If you continue to face issues, please don't hesitate to contact our support team. We're here to help!</p>
-            
-            <div class="footer">
-              <p>This is an automated email from Cypher-Ray. Please do not reply to this email.</p>
-              <p>For support, please contact us at ${process.env.EMAIL_FROM}</p>
-              <p>&copy; 2025 Cypher-Ray. All rights reserved.</p>
-            </div>
+            <p style="margin-top: 30px; color: #4b5563;">If you continue to face issues, please don't hesitate to contact our support team. We're here to help!</p>
+          </div>
+          
+          <div class="footer">
+            <p>This is an automated email from Cypher-Ray. Please do not reply to this email.</p>
+            <p>For support, please contact us at ${process.env.EMAIL_FROM}</p>
+            <p><strong>&copy; 2025 Cypher-Ray. All rights reserved.</strong></p>
           </div>
         </div>
       </body>
