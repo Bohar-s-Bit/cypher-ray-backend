@@ -16,7 +16,9 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: function () {
+        return this.accountStatus === "active";
+      },
     },
     userType: {
       type: String,
@@ -25,6 +27,14 @@ const userSchema = new mongoose.Schema(
     },
     organizationName: {
       type: String,
+    },
+    reasonForJoining: {
+      type: String,
+    },
+    accountStatus: {
+      type: String,
+      enum: ["pending", "active", "inactive"],
+      default: "active",
     },
     credits: {
       total: { type: Number, default: 0 },
@@ -51,6 +61,21 @@ const userSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+    },
+    // Payment History
+    paymentHistory: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Payment",
+      },
+    ],
+    totalSpent: {
+      type: Number,
+      default: 0,
+    },
+    lifetimeCredits: {
+      type: Number,
+      default: 0,
     },
     // Payment History
     paymentHistory: [

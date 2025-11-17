@@ -46,6 +46,7 @@ export const createUserService = async (userData, createdById) => {
       password: tempPassword,
       userType: userType || "user",
       organizationName,
+      accountStatus: "active",
       credits: {
         total: credits,
         used: 0,
@@ -389,11 +390,7 @@ export const requestPasswordChangeOTP = async (
  * @param {String} newPassword - New password
  * @returns {Object} Success message
  */
-export const verifyOTPAndChangePassword = async (
-  userId,
-  otp,
-  newPassword
-) => {
+export const verifyOTPAndChangePassword = async (userId, otp, newPassword) => {
   try {
     // Verify OTP
     const otpVerification = await verifyPasswordChangeOTP(userId, otp);

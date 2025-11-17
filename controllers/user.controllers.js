@@ -636,3 +636,59 @@ export const revokeUserApiKey = async (req, res) => {
     });
   }
 };
+
+/**
+ * Request access to platform (Public endpoint)
+ * POST /api/user/request-access
+ */
+export const requestAccess = async (req, res) => {
+  try {
+    const { fullName, email, organizationName, reasonForJoining } = req.body;
+
+    // Validate required fields
+    if (!fullName || !email || !organizationName || !reasonForJoining) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(409).json({
+        success: false,
+        message: "An account with this email already exists",
+      });
+    }
+
+    // Create pending user (no password yet)
+    const user = await User.create({
+      username: fullName.toLowerCase().replace(/\s+/g, "_"),
+      email: email.toLowerCase(),
+      organizationName,
+      reasonForJoining,
+      accountStatus: "pending",
+      isActive: false,
+      userType: "user",
+    });
+
+    res.status(201).json({
+      success: true,
+      message:
+        "Access request submitted successfully. Admin will review your request.",
+      data: {
+        requestId: user._id,
+        email: user.email,
+        status: user.accountStatus,
+      },
+    });
+  } catch (error) {
+    console.error("Request access error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to submit access request",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};

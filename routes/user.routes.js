@@ -14,6 +14,7 @@ import {
   createUserApiKey,
   getUserApiKeys,
   revokeUserApiKey,
+  requestAccess,
 } from "../controllers/user.controllers.js";
 import {
   loginValidation,
@@ -32,6 +33,9 @@ const router = express.Router();
 
 // User login
 router.post("/login", loginValidation, userLogin);
+
+// Request access to platform (no auth required)
+router.post("/request-access", requestAccess);
 
 /**
  * Protected Routes (require authentication)
@@ -55,11 +59,7 @@ router.get(
 router.post("/password/request-otp", auth, requestPasswordChangeOTPController);
 
 // Verify OTP and change password
-router.put(
-  "/password/verify-otp",
-  auth,
-  verifyOTPAndChangePasswordController
-);
+router.put("/password/verify-otp", auth, verifyOTPAndChangePasswordController);
 
 // Change password (old method - keeping for backward compatibility)
 router.put("/password/change", auth, changePasswordValidation, changePassword);

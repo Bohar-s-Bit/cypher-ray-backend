@@ -12,6 +12,7 @@ import {
   createApiKey,
   getUserApiKeys,
   revokeApiKey,
+  getAccessRequests,
 } from "../controllers/admin.controllers.js";
 import {
   loginValidation,
@@ -44,6 +45,14 @@ router.get("/users", adminAuth, paginationValidation, getAllUsers);
 
 // Get platform statistics
 router.get("/stats", adminAuth, getPlatformStats);
+
+// Get pending access requests
+router.get(
+  "/access-requests",
+  adminAuth,
+  paginationValidation,
+  getAccessRequests
+);
 
 // Get user details
 router.get("/users/:userId", adminAuth, userIdValidation, getUserDetails);

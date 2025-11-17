@@ -471,3 +471,51 @@ export const revokeApiKey = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get pending access requests
+ * GET /api/admin/access-requests
+ */
+export const getAccessRequests = async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (page - 1) * limit;
+
+    const [requests, total] = await Promise.all([
+      User.find({ accountStatus: "pending" })
+        .select("username email organizationName reasonForJoining createdAt")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit)),
+      User.countDocuments({ accountStatus: "pending" }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Access requests retrieved successfully",
+      data: {
+        requests: requests.map((req) => ({
+          id: req._id,
+          fullName: req.username.replace(/_/g, " "),
+          email: req.email,
+          organizationName: req.organizationName,
+          reasonForJoining: req.reasonForJoining,
+          requestedAt: req.createdAt,
+        })),
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: Math.ceil(total / limit),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Get access requests error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve access requests",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
