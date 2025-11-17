@@ -162,7 +162,7 @@ export const sendPaymentSuccessEmail = async (email, paymentDetails) => {
       <body>
         <div class="container">
           <div class="header">
-            <img src="https://raw.githubusercontent.com/Bohar-s-Bit/cypher-ray-backend/main/assets/logo.png" alt="Cypher-Ray" class="logo" />
+            <img src="${process.env.BACKEND_URL || 'http://localhost:6005'}/assets/logo.png" alt="Cypher-Ray" class="logo" />
             <div class="success-badge">Payment Successful</div>
             <h1>Credits Added to Your Account</h1>
           </div>
@@ -258,11 +258,12 @@ export const sendPaymentFailedEmail = async (email, failureDetails) => {
   const { username, planName, amount, failureReason, attemptDate } =
     failureDetails;
 
-  const mailOptions = {
-    from: `${process.env.EMAIL_FROM_NAME} <${process.env.EMAIL_FROM}>`,
-    to: email,
-    subject: "Payment Failed - Please Try Again | Cypher-Ray",
-    html: `
+  try {
+    const result = await resend.emails.send({
+      from: `${process.env.EMAIL_FROM_NAME} <${process.env.EMAIL_FROM}>`,
+      to: email,
+      subject: "Payment Failed - Please Try Again | Cypher-Ray",
+      html: `
       <!DOCTYPE html>
       <html>
       <head>
@@ -417,7 +418,7 @@ export const sendPaymentFailedEmail = async (email, failureDetails) => {
       <body>
         <div class="container">
           <div class="header">
-            <img src="https://raw.githubusercontent.com/Bohar-s-Bit/cypher-ray-backend/main/assets/logo.png" alt="Cypher-Ray" class="logo" />
+            <img src="${process.env.BACKEND_URL || 'http://localhost:6005'}/assets/logo.png" alt="Cypher-Ray" class="logo" />
             <div class="failed-badge">Payment Failed</div>
             <h1>Payment Could Not Be Processed</h1>
           </div>
@@ -489,14 +490,20 @@ export const sendPaymentFailedEmail = async (email, failureDetails) => {
       </body>
       </html>
     `,
-  };
+    });
 
-  try {
-    await getTransporter().sendMail(mailOptions);
-    console.log(`[EMAIL] Payment failure email sent to ${email}`);
+    if (result.data?.id) {
+      console.log(
+        `[EMAIL] ✅ Payment failure email sent to ${email} (ID: ${result.data.id})`
+      );
+    } else {
+      console.error(
+        "[EMAIL] ❌ Payment failure email send failed - no confirmation ID received"
+      );
+    }
   } catch (error) {
     console.error(
-      "[EMAIL] Failed to send payment failure email:",
+      "[EMAIL] ❌ Failed to send payment failure email:",
       error.message
     );
     // Don't throw error - email failure shouldn't stop the flow

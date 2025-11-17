@@ -189,7 +189,7 @@ export const sendWelcomeEmail = async ({
       <body>
         <div class="email-wrapper">
           <div class="header">
-            <img src="https://raw.githubusercontent.com/Bohar-s-Bit/cypher-ray-backend/main/assets/logo.png" alt="Cypher-Ray" class="logo" />
+            <img src="${process.env.BACKEND_URL || 'http://localhost:6005'}/assets/logo.png" alt="Cypher-Ray" class="logo" />
             <h1>Welcome to Cypher-Ray</h1>
             <p>Your Enterprise Solution for Advanced Analytics</p>
           </div>
@@ -394,7 +394,7 @@ export const sendPasswordResetEmail = async ({
       <body>
         <div class="email-wrapper">
           <div class="header">
-            <img src="https://raw.githubusercontent.com/Bohar-s-Bit/cypher-ray-backend/main/assets/logo.png" alt="Cypher-Ray" class="logo" />
+            <img src="${process.env.BACKEND_URL || 'http://localhost:6005'}/assets/logo.png" alt="Cypher-Ray" class="logo" />
             <h1>Password Reset Request</h1>
           </div>
           
@@ -570,7 +570,7 @@ export const sendPasswordChangeOTP = async ({ email, username, otp }) => {
       <body>
         <div class="email-wrapper">
           <div class="header">
-            <img src="https://raw.githubusercontent.com/Bohar-s-Bit/cypher-ray-backend/main/assets/logo.png" alt="Cypher-Ray" class="logo" />
+            <img src="${process.env.BACKEND_URL || 'http://localhost:6005'}/assets/logo.png" alt="Cypher-Ray" class="logo" />
             <h1>Password Change Request</h1>
             <p>One-Time Password Verification</p>
           </div>

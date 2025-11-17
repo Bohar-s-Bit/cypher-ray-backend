@@ -83,6 +83,9 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from assets folder (for email logo)
+app.use('/assets', express.static('assets'));
+
 // Request logging
 if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
