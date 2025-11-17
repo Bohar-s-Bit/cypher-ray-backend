@@ -1,23 +1,9 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 /**
- * Get or create email transporter (lazy initialization)
+ * Create Resend client
  */
-let transporter = null;
-const getTransporter = () => {
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST,
-      port: parseInt(process.env.EMAIL_PORT),
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-  }
-  return transporter;
-};
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
  * Send Payment Success Email
@@ -34,11 +20,12 @@ export const sendPaymentSuccessEmail = async (email, paymentDetails) => {
     transactionDate,
   } = paymentDetails;
 
-  const mailOptions = {
-    from: `${process.env.EMAIL_FROM_NAME} <${process.env.EMAIL_FROM}>`,
-    to: email,
-    subject: "✅ Payment Successful - Credits Added | Cypher-Ray",
-    html: `
+  try {
+    const result = await resend.emails.send({
+      from: `${process.env.EMAIL_FROM_NAME} <${process.env.EMAIL_FROM}>`,
+      to: email,
+      subject: "✅ Payment Successful - Credits Added | Cypher-Ray",
+      html: `
       <!DOCTYPE html>
       <html>
       <head>
@@ -186,16 +173,26 @@ export const sendPaymentSuccessEmail = async (email, paymentDetails) => {
       </body>
       </html>
     `,
-  };
+    });
 
-  try {
-    await getTransporter().sendMail(mailOptions);
-    console.log(`[EMAIL] Payment success email sent to ${email}`);
+    if (result.data?.id) {
+      console.log(
+        `[EMAIL] ✅ Payment success email sent to ${email} (ID: ${result.data.id})`
+      );
+    } else {
+      console.error(
+        "[EMAIL] ❌ Payment email send failed - no confirmation ID received"
+      );
+    }
   } catch (error) {
     console.error(
-      "[EMAIL] Failed to send payment success email:",
+      "[EMAIL] ❌ Failed to send payment success email:",
       error.message
     );
+    console.error("[EMAIL] Email details:", {
+      to: email,
+      from: process.env.EMAIL_FROM,
+    });
     // Don't throw error - email failure shouldn't stop payment flow
   }
 };

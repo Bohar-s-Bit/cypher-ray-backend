@@ -1,19 +1,9 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 /**
- * Create email transporter
+ * Create Resend client
  */
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT),
-    secure: false, // true for 465, false for other ports
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
-};
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
  * Send welcome email with credentials
@@ -33,15 +23,14 @@ export const sendWelcomeEmail = async ({
   tier,
   credits,
 }) => {
-  const transporter = createTransporter();
-
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME || "Cypher-Ray"}" <${
-      process.env.EMAIL_FROM
-    }>`,
-    to: email,
-    subject: "Welcome to Cypher-Ray - Your Account is Ready",
-    html: `
+  try {
+    const result = await resend.emails.send({
+      from: `${process.env.EMAIL_FROM_NAME || "Cypher-Ray"} <${
+        process.env.EMAIL_FROM
+      }>`,
+      to: email,
+      subject: "Welcome to Cypher-Ray - Your Account is Ready",
+      html: `
       <!DOCTYPE html>
       <html>
       <head>
@@ -212,14 +201,31 @@ export const sendWelcomeEmail = async ({
       </body>
       </html>
     `,
-  };
+    });
 
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`✅ Welcome email sent to: ${email}`);
-    return { success: true };
+    console.log("Resend API Response:", JSON.stringify(result, null, 2));
+
+    if (result.data?.id) {
+      console.log(`✅ Welcome email sent to: ${email} (ID: ${result.data.id})`);
+      return { success: true, emailId: result.data.id };
+    } else if (result.error) {
+      console.error("❌ Resend API Error:", result.error);
+      return {
+        success: false,
+        error: result.error.message || "Email service error",
+      };
+    } else {
+      console.error("❌ Email send failed - unexpected response format");
+      console.error("Response:", result);
+      return { success: false, error: "No confirmation from email service" };
+    }
   } catch (error) {
-    console.error("❌ Error sending email:", error);
+    console.error("❌ Error sending welcome email:", error.message);
+    console.error("Full error:", error);
+    console.error("Email details:", {
+      to: email,
+      from: process.env.EMAIL_FROM,
+    });
     // Don't throw error - email failure shouldn't block user creation
     return { success: false, error: error.message };
   }
@@ -237,15 +243,14 @@ export const sendPasswordResetEmail = async ({
   username,
   resetLink,
 }) => {
-  const transporter = createTransporter();
-
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME || "Cypher-Ray"}" <${
-      process.env.EMAIL_FROM
-    }>`,
-    to: email,
-    subject: "Password Reset Request - Cypher-Ray",
-    html: `
+  try {
+    const result = await resend.emails.send({
+      from: `${process.env.EMAIL_FROM_NAME || "Cypher-Ray"} <${
+        process.env.EMAIL_FROM
+      }>`,
+      to: email,
+      subject: "Password Reset Request - Cypher-Ray",
+      html: `
       <!DOCTYPE html>
       <html>
       <head>
@@ -312,14 +317,23 @@ export const sendPasswordResetEmail = async ({
       </body>
       </html>
     `,
-  };
+    });
 
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`✅ Password reset email sent to: ${email}`);
-    return { success: true };
+    if (result.data?.id) {
+      console.log(
+        `✅ Password reset email sent to: ${email} (ID: ${result.data.id})`
+      );
+      return { success: true, emailId: result.data.id };
+    } else {
+      console.error("❌ Email send failed - no confirmation ID received");
+      return { success: false, error: "No confirmation from email service" };
+    }
   } catch (error) {
-    console.error("❌ Error sending email:", error);
+    console.error("❌ Error sending password reset email:", error.message);
+    console.error("Email details:", {
+      to: email,
+      from: process.env.EMAIL_FROM,
+    });
     return { success: false, error: error.message };
   }
 };
