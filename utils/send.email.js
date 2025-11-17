@@ -1,6 +1,11 @@
 import { Resend } from "resend";
 
 /**
+ * Cypher-Ray Logo URL (Google Drive direct link)
+ */
+const LOGO_URL = "https://drive.google.com/uc?export=view&id=1hX_GDOQk1FcrK0jd3df116TUV-aQkW5_";
+
+/**
  * Create Resend client
  */
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -148,7 +153,8 @@ export const sendWelcomeEmail = async ({
           .logo {
             max-width: 180px;
             height: auto;
-            margin-bottom: 20px;
+            margin: 0 auto 20px auto;
+            display: block;
           }
           .warning {
             background: #fef3c7;
@@ -189,7 +195,7 @@ export const sendWelcomeEmail = async ({
       <body>
         <div class="email-wrapper">
           <div class="header">
-            <img src="${process.env.BACKEND_URL || 'http://localhost:6005'}/assets/logo.png" alt="Cypher-Ray" class="logo" />
+            <img src="${LOGO_URL}" alt="Cypher-Ray" class="logo" />
             <h1>Welcome to Cypher-Ray</h1>
             <p>Your Enterprise Solution for Advanced Analytics</p>
           </div>
@@ -394,7 +400,7 @@ export const sendPasswordResetEmail = async ({
       <body>
         <div class="email-wrapper">
           <div class="header">
-            <img src="${process.env.BACKEND_URL || 'http://localhost:6005'}/assets/logo.png" alt="Cypher-Ray" class="logo" />
+            <img src="${LOGO_URL}" alt="Cypher-Ray" class="logo" />
             <h1>Password Reset Request</h1>
           </div>
           
@@ -570,7 +576,7 @@ export const sendPasswordChangeOTP = async ({ email, username, otp }) => {
       <body>
         <div class="email-wrapper">
           <div class="header">
-            <img src="${process.env.BACKEND_URL || 'http://localhost:6005'}/assets/logo.png" alt="Cypher-Ray" class="logo" />
+            <img src="${LOGO_URL}" alt="Cypher-Ray" class="logo" />
             <h1>Password Change Request</h1>
             <p>One-Time Password Verification</p>
           </div>

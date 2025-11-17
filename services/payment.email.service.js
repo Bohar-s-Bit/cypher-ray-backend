@@ -1,6 +1,11 @@
 import { Resend } from "resend";
 
 /**
+ * Cypher-Ray Logo URL (Google Drive direct link)
+ */
+const LOGO_URL = "https://drive.google.com/uc?export=view&id=1hX_GDOQk1FcrK0jd3df116TUV-aQkW5_";
+
+/**
  * Create Resend client
  */
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -124,7 +129,8 @@ export const sendPaymentSuccessEmail = async (email, paymentDetails) => {
           .logo {
             max-width: 180px;
             height: auto;
-            margin-bottom: 20px;
+            margin: 0 auto 20px auto;
+            display: block;
           }
           .success-badge {
             background: #10b981;
@@ -162,7 +168,7 @@ export const sendPaymentSuccessEmail = async (email, paymentDetails) => {
       <body>
         <div class="container">
           <div class="header">
-            <img src="${process.env.BACKEND_URL || 'http://localhost:6005'}/assets/logo.png" alt="Cypher-Ray" class="logo" />
+            <img src="${LOGO_URL}" alt="Cypher-Ray" class="logo" />
             <div class="success-badge">Payment Successful</div>
             <h1>Credits Added to Your Account</h1>
           </div>
@@ -360,7 +366,8 @@ export const sendPaymentFailedEmail = async (email, failureDetails) => {
           .logo {
             max-width: 180px;
             height: auto;
-            margin-bottom: 20px;
+            margin: 0 auto 20px auto;
+            display: block;
           }
           .success-badge {
             background: #10b981;
@@ -418,7 +425,7 @@ export const sendPaymentFailedEmail = async (email, failureDetails) => {
       <body>
         <div class="container">
           <div class="header">
-            <img src="${process.env.BACKEND_URL || 'http://localhost:6005'}/assets/logo.png" alt="Cypher-Ray" class="logo" />
+            <img src="${LOGO_URL}" alt="Cypher-Ray" class="logo" />
             <div class="failed-badge">Payment Failed</div>
             <h1>Payment Could Not Be Processed</h1>
           </div>
