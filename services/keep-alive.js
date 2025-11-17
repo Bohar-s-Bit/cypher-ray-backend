@@ -7,6 +7,7 @@ const PING_INTERVAL = 5 * 60 * 1000; // 10 minutes
 const servicesToKeepAlive = [
   { name: "ML Service", url: "https://cypher-ray-models.onrender.com/health" },
   { name: "Backend", url: "https://cypher-ray-backend.onrender.com/" },
+  { name: "To-do", url: "https://to-do-app-ycyb.onrender.com/" },
 ];
 
 export const startKeepAlive = () => {
