@@ -337,3 +337,148 @@ export const sendPasswordResetEmail = async ({
     return { success: false, error: error.message };
   }
 };
+
+/**
+ * Send OTP for password change
+ * @param {Object} data - Email data
+ * @param {String} data.email - Recipient email
+ * @param {String} data.username - Username
+ * @param {String} data.otp - 6-digit OTP
+ */
+export const sendPasswordChangeOTP = async ({ email, username, otp }) => {
+  try {
+    const result = await resend.emails.send({
+      from: `${process.env.EMAIL_FROM_NAME || "Cypher-Ray"} <${
+        process.env.EMAIL_FROM
+      }>`,
+      to: email,
+      subject: "Password Change OTP - Cypher-Ray",
+      html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+          }
+          .content {
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+          }
+          .otp-box {
+            background: white;
+            border: 3px solid #667eea;
+            padding: 30px;
+            margin: 25px 0;
+            border-radius: 10px;
+            text-align: center;
+          }
+          .otp-code {
+            font-family: monospace;
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+            letter-spacing: 8px;
+            user-select: all;
+            margin: 15px 0;
+          }
+          .otp-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+          }
+          .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+          }
+          .security-notice {
+            background: #ffe5e5;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+          }
+          .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 14px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>🔐 Password Change Request</h1>
+          <p>One-Time Password Verification</p>
+        </div>
+        
+        <div class="content">
+          <p>Hello ${username},</p>
+          
+          <p>You have requested to change your password. Please use the OTP below to complete the process:</p>
+          
+          <div class="otp-box">
+            <div class="otp-label">Your One-Time Password</div>
+            <div class="otp-code">${otp}</div>
+            <div class="otp-label">Enter this code in the password change form</div>
+          </div>
+          
+          <div class="warning">
+            <strong>⏱️ Time Sensitive:</strong><br>
+            This OTP will expire in <strong>2 minutes</strong>. Please enter it immediately.
+          </div>
+          
+          <div class="security-notice">
+            <strong>🔒 Security Notice:</strong><br>
+            • Do NOT share this OTP with anyone<br>
+            • Cypher-Ray staff will never ask for your OTP<br>
+            • If you didn't request this change, please contact support immediately
+          </div>
+          
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} Cypher-Ray. All rights reserved.</p>
+            <p>This is an automated message, please do not reply to this email.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    });
+
+    if (result.data?.id) {
+      console.log(
+        `✅ Password change OTP sent to: ${email} (ID: ${result.data.id})`
+      );
+      return { success: true, emailId: result.data.id };
+    } else if (result.error) {
+      console.error("❌ Resend API Error:", result.error);
+      return {
+        success: false,
+        error: result.error.message || "Email service error",
+      };
+    } else {
+      console.error("❌ Email send failed - unexpected response format");
+      return { success: false, error: "No confirmation from email service" };
+    }
+  } catch (error) {
+    console.error("❌ Error sending OTP email:", error.message);
+    console.error("Email details:", { to: email, from: process.env.EMAIL_FROM });
+    return { success: false, error: error.message };
+  }
+};

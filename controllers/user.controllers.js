@@ -6,6 +6,8 @@ import { getCreditHistory, deductCredits } from "../services/credit.service.js";
 import {
   updateUserProfileService,
   changePasswordService,
+  requestPasswordChangeOTP,
+  verifyOTPAndChangePassword,
 } from "../services/user.service.js";
 import { sdkAnalysisQueue } from "../config/queue.js";
 
@@ -146,6 +148,101 @@ export const changePassword = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || "Failed to change password",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+/**
+ * Request OTP for password change
+ * POST /api/user/password/request-otp
+ */
+export const requestPasswordChangeOTPController = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    // Validate passwords
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password and new password are required",
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 6 characters long",
+      });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different from current password",
+      });
+    }
+
+    const result = await requestPasswordChangeOTP(
+      req.user._id,
+      currentPassword,
+      newPassword
+    );
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      requiresOTP: result.requiresOTP,
+      expiresIn: result.expiresIn,
+    });
+  } catch (error) {
+    console.error("Request OTP error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to send OTP",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+/**
+ * Verify OTP and change password
+ * PUT /api/user/password/verify-otp
+ */
+export const verifyOTPAndChangePasswordController = async (req, res) => {
+  try {
+    const { otp, newPassword } = req.body;
+
+    // Validate inputs
+    if (!otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP and new password are required",
+      });
+    }
+
+    if (otp.length !== 6 || !/^\d{6}$/.test(otp)) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP must be a 6-digit number",
+      });
+    }
+
+    const result = await verifyOTPAndChangePassword(
+      req.user._id,
+      otp,
+      newPassword
+    );
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    console.error("Verify OTP and change password error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to verify OTP or change password",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }

@@ -5,6 +5,8 @@ import {
   getUserProfile,
   getCreditHistoryController,
   changePassword,
+  requestPasswordChangeOTPController,
+  verifyOTPAndChangePasswordController,
   updateUserProfile,
   analyzeSingleUser,
   getUserJobResult,
@@ -49,7 +51,17 @@ router.get(
   getCreditHistoryController
 );
 
-// Change password
+// Request OTP for password change
+router.post("/password/request-otp", auth, requestPasswordChangeOTPController);
+
+// Verify OTP and change password
+router.put(
+  "/password/verify-otp",
+  auth,
+  verifyOTPAndChangePasswordController
+);
+
+// Change password (old method - keeping for backward compatibility)
 router.put("/password/change", auth, changePasswordValidation, changePassword);
 
 /**

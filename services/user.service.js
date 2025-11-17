@@ -2,6 +2,10 @@ import User from "../models/user.model.js";
 import { generatePassword } from "../utils/generate.password.js";
 import { sendWelcomeEmail } from "../utils/send.email.js";
 import { getTierCredits, getTierInfo, addCredits } from "./credit.service.js";
+import {
+  createPasswordChangeOTP,
+  verifyPasswordChangeOTP,
+} from "./otp.service.js";
 
 /**
  * User Service
@@ -325,6 +329,91 @@ export const changePasswordService = async (
     // Update password
     user.password = newPassword;
     await user.save();
+
+    return {
+      success: true,
+      message: "Password changed successfully",
+    };
+  } catch (error) {
+    throw new Error(`Failed to change password: ${error.message}`);
+  }
+};
+
+/**
+ * Request OTP for password change
+ * @param {String} userId - User ID
+ * @param {String} currentPassword - Current password
+ * @param {String} newPassword - New password
+ * @returns {Object} OTP sent message
+ */
+export const requestPasswordChangeOTP = async (
+  userId,
+  currentPassword,
+  newPassword
+) => {
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Verify current password
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      throw new Error("Current password is incorrect");
+    }
+
+    // Create and send OTP
+    const otpResult = await createPasswordChangeOTP(
+      userId,
+      user.email,
+      user.username
+    );
+
+    return {
+      success: true,
+      message: "OTP sent to your email",
+      requiresOTP: true,
+      expiresIn: "2 minutes",
+    };
+  } catch (error) {
+    throw new Error(`Failed to send OTP: ${error.message}`);
+  }
+};
+
+/**
+ * Verify OTP and change password
+ * @param {String} userId - User ID
+ * @param {String} otp - OTP code
+ * @param {String} newPassword - New password
+ * @returns {Object} Success message
+ */
+export const verifyOTPAndChangePassword = async (
+  userId,
+  otp,
+  newPassword
+) => {
+  try {
+    // Verify OTP
+    const otpVerification = await verifyPasswordChangeOTP(userId, otp);
+
+    if (!otpVerification.success) {
+      throw new Error(otpVerification.message);
+    }
+
+    // Find user and update password
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Update password
+    user.password = newPassword;
+    await user.save();
+
+    console.log(`✅ Password changed successfully for user: ${userId}`);
 
     return {
       success: true,
