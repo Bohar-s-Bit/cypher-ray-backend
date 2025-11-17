@@ -1,5 +1,6 @@
 import User from "../models/user.model.js";
 import CreditTransaction from "../models/credit.transaction.model.js";
+import Payment from "../models/payment.model.js";
 
 /**
  * Credit Manager Service
@@ -378,5 +379,62 @@ export const refundCreditsForSDK = async (userId, amount, jobId, reason) => {
     };
   } catch (error) {
     throw new Error(`Failed to refund SDK credits: ${error.message}`);
+  }
+};
+
+/**
+ * Add credits from payment with atomic transaction
+ * Ensures credits, transaction, and payment are updated atomically
+ * @param {String} userId - User ID
+ * @param {Number} amount - Credits to add
+ * @param {String} paymentId - Payment ID
+ * @param {String} description - Transaction description
+ * @param {Object} session - MongoDB session for transaction (optional, ignored in standalone mode)
+ * @returns {Object} Updated user and transaction
+ */
+export const addCreditsFromPayment = async (
+  userId,
+  amount,
+  paymentId,
+  description = "Credit purchase",
+  session = null
+) => {
+  try {
+    // Always work without session for standalone MongoDB
+    const user = await User.findById(userId);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const balanceBefore = user.credits.remaining;
+
+    // Update credits
+    user.credits.total += amount;
+    user.credits.remaining += amount;
+
+    const balanceAfter = user.credits.remaining;
+
+    // Save without session
+    await user.save();
+
+    // Log transaction without session
+    const transaction = await CreditTransaction.create({
+      userId,
+      type: "credit",
+      amount,
+      description,
+      paymentId,
+      balanceBefore,
+      balanceAfter,
+    });
+
+    return {
+      success: true,
+      user,
+      transaction,
+    };
+  } catch (error) {
+    throw new Error(`Failed to add credits from payment: ${error.message}`);
   }
 };

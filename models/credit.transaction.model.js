@@ -22,6 +22,10 @@ const creditTransactionSchema = new mongoose.Schema(
     jobId: {
       type: String,
     },
+    paymentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Payment",
+    },
     balanceBefore: {
       type: Number,
     },
