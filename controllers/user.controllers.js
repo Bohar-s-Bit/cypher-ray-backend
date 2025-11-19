@@ -333,6 +333,7 @@ export const analyzeSingleUser = async (req, res) => {
       cloudinaryPublicId: file.filename,
       status: "queued",
       tier: req.user.tier,
+      creditsDeducted: 0, // Credits deducted after analysis completes
       metadata: {
         source: "user-dashboard",
         ipAddress: req.ip,
@@ -340,10 +341,10 @@ export const analyzeSingleUser = async (req, res) => {
       },
     });
 
-    // Deduct credits
-    await deductCredits(userId, 1, "Binary analysis", job._id.toString());
+    // NOTE: Credits are NOT deducted here - they will be calculated and deducted
+    // after the analysis completes based on actual file size and processing time
 
-    // Add to queue
+    // Add to queue with file size for dynamic credit calculation
     await sdkAnalysisQueue.add(
       req.user.tier,
       {
@@ -353,7 +354,9 @@ export const analyzeSingleUser = async (req, res) => {
         cloudinaryPublicId: file.filename,
         fileHash,
         filename: file.originalname,
+        fileSize: file.size, // Pass file size for dynamic credit calculation
         tier: req.user.tier,
+        source: "user-dashboard", // Identify source for correct transaction description
       },
       {
         priority: req.user.tier === "tier1" ? 1 : 2,
@@ -365,7 +368,7 @@ export const analyzeSingleUser = async (req, res) => {
       success: true,
       message: "Analysis job queued successfully",
       cached: false,
-      creditsCharged: 1,
+      note: "Credits will be calculated and deducted after analysis completes based on file size and processing time",
       data: {
         job: {
           jobId: job._id.toString(),

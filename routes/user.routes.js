@@ -69,7 +69,8 @@ router.put("/password/change", auth, changePasswordValidation, changePassword);
  */
 
 // Analyze single binary file (user dashboard)
-router.post("/analyze", auth, uploadSingle, creditCheck(1), analyzeSingleUser);
+// Credits checked for minimum threshold, deducted after analysis completes
+router.post("/analyze", auth, uploadSingle, creditCheck(), analyzeSingleUser);
 
 // Get user's analysis history (user dashboard)
 router.get("/analyze", auth, getUserAnalysisHistory);

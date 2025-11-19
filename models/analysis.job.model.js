@@ -58,6 +58,30 @@ const analysisJobSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    processingTimeSeconds: {
+      type: Number,
+      default: 0,
+    },
+    creditBreakdown: {
+      baseCredits: {
+        type: Number,
+        default: 0,
+      },
+      timeCredits: {
+        type: Number,
+        default: 0,
+      },
+      complexityCredits: {
+        type: Number,
+        default: 0,
+      },
+      sizeTier: String, // tiny, small, medium, large, huge
+      timeTier: String, // quick, normal, slow, heavy, extreme
+      totalCalculated: {
+        type: Number,
+        default: 0,
+      },
+    },
     progress: {
       type: Number,
       default: 0,

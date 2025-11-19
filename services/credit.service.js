@@ -1,6 +1,7 @@
 import User from "../models/user.model.js";
 import CreditTransaction from "../models/credit.transaction.model.js";
 import Payment from "../models/payment.model.js";
+import logger from "../utils/logger.js";
 
 /**
  * Credit Manager Service
@@ -276,34 +277,51 @@ export const getTierInfo = (tierName) => {
 };
 
 /**
- * Deduct credits for SDK analysis (atomic operation)
+ * Deduct credits for SDK analysis
  * @param {String} userId - User ID
  * @param {Number} amount - Credits to deduct
  * @param {String} jobId - Analysis job ID
  * @param {String} apiKeyId - API key ID
+ * @param {String} description - Custom transaction description (optional)
  * @returns {Object} Updated user and transaction
  */
 export const deductCreditsForSDK = async (
   userId,
   amount,
   jobId,
-  apiKeyId = null
+  apiKeyId = null,
+  description = null
 ) => {
   try {
+    logger.info("🔵 Starting credit deduction for SDK", {
+      userId: userId?.toString(),
+      amount,
+      jobId,
+      apiKeyId: apiKeyId?.toString(),
+    });
+
     // Use MongoDB transaction for atomicity
     const user = await User.findById(userId);
     if (!user) {
+      logger.error("❌ User not found for credit deduction", { userId });
       throw new Error("User not found");
     }
 
-    // Check if user has enough credits
-    if (user.credits.remaining < amount) {
-      throw new Error("Insufficient credits");
-    }
+    // NOTE: We allow negative balance here (debt model)
+    // User must have had >= 5 credits to start analysis (checked by middleware)
+    // After analysis, we deduct actual cost even if it takes balance negative
+    // This is fair because cost is based on actual processing
 
     const balanceBefore = user.credits.remaining;
 
-    // Update credits atomically
+    logger.info("💰 Current balance before deduction", {
+      userId: userId?.toString(),
+      balanceBefore,
+      amountToDeduct: amount,
+      willGoNegative: balanceBefore - amount < 0,
+    });
+
+    // Update credits atomically (can go negative)
     user.credits.used += amount;
     user.credits.remaining -= amount;
 
@@ -311,14 +329,30 @@ export const deductCreditsForSDK = async (
 
     await user.save();
 
-    // Log transaction
+    logger.info("💾 User balance updated", {
+      userId: userId?.toString(),
+      balanceBefore,
+      balanceAfter,
+      amountDeducted: amount,
+    });
+
+    // Log transaction with custom description or default
+    const transactionDescription = description || `Binary Analysis`;
     const transaction = await CreditTransaction.create({
       userId,
       type: "debit",
       amount,
-      description: `SDK Binary Analysis - Job ${jobId}`,
+      description: transactionDescription,
       jobId,
       apiKeyId,
+      balanceBefore,
+      balanceAfter,
+    });
+
+    logger.info("✅ Credit transaction created", {
+      transactionId: transaction._id.toString(),
+      userId: userId?.toString(),
+      amount,
       balanceBefore,
       balanceAfter,
     });
@@ -329,6 +363,13 @@ export const deductCreditsForSDK = async (
       transaction,
     };
   } catch (error) {
+    logger.error("❌ Failed to deduct SDK credits", {
+      error: error.message,
+      stack: error.stack,
+      userId,
+      amount,
+      jobId,
+    });
     throw new Error(`Failed to deduct SDK credits: ${error.message}`);
   }
 };
@@ -408,12 +449,24 @@ export const addCreditsFromPayment = async (
     }
 
     const balanceBefore = user.credits.remaining;
+    const debtAmount = balanceBefore < 0 ? Math.abs(balanceBefore) : 0;
 
-    // Update credits
+    // Automatic debt clearance: If balance is negative, the top-up amount first clears the debt
+    // Example: -10 balance + 1000 top-up = 990 final balance
+    // This ensures users see the true available credits after debt clearance
     user.credits.total += amount;
-    user.credits.remaining += amount;
+    user.credits.remaining += amount; // This automatically clears debt (negative + positive = net)
 
     const balanceAfter = user.credits.remaining;
+
+    // Update transaction description to show debt clearance if applicable
+    let finalDescription = description;
+    if (debtAmount > 0) {
+      finalDescription = `${description} (Debt cleared: ${debtAmount} credits)`;
+      logger.info(
+        `💳 Debt clearance on payment: User ${userId} had ${balanceBefore} credits, topped up ${amount} credits, debt of ${debtAmount} cleared, final balance: ${balanceAfter}`
+      );
+    }
 
     // Save without session
     await user.save();
@@ -423,16 +476,21 @@ export const addCreditsFromPayment = async (
       userId,
       type: "credit",
       amount,
-      description,
+      description: finalDescription,
       paymentId,
       balanceBefore,
       balanceAfter,
     });
 
+    logger.info(
+      `✅ Credits added from payment: User ${userId}, Amount: ${amount}, Balance: ${balanceBefore} → ${balanceAfter}`
+    );
+
     return {
       success: true,
       user,
       transaction,
+      debtCleared: debtAmount,
     };
   } catch (error) {
     throw new Error(`Failed to add credits from payment: ${error.message}`);

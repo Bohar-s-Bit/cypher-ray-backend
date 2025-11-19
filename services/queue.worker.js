@@ -1,7 +1,16 @@
 import { sdkAnalysisQueue } from "../config/queue.js";
 import AnalysisJob from "../models/analysis.job.model.js";
 import analysisService from "../services/analysis.service.js";
-import { refundCreditsForSDK } from "../services/credit.service.js";
+import {
+  deductCreditsForSDK,
+  refundCreditsForSDK,
+} from "../services/credit.service.js";
+import {
+  calculateDynamicCredits,
+  getSizeTier,
+  getTimeTier,
+  formatCreditBreakdown,
+} from "./credit.calculator.js";
 import { deleteFile } from "../utils/file.handler.js";
 import {
   downloadToTempFile,
@@ -33,19 +42,25 @@ async function processAnalysisJob(job) {
     cloudinaryPublicId,
     fileHash,
     filename,
+    fileSize,
     tier,
+    apiKeyId,
+    source = "sdk", // Default to SDK if not specified
   } = job.data;
 
   queueLogger.info("Processing analysis job", {
     jobId,
     userId,
     filename,
+    fileSize,
     tier,
     cloudinaryPublicId,
+    source,
   });
 
   let analysisJob = null;
   let tempFilePath = null;
+  const analysisStartTime = Date.now();
 
   try {
     // Get job from database
@@ -98,6 +113,89 @@ async function processAnalysisJob(job) {
     await analysisJob.updateProgress(90);
     await job.progress(90);
 
+    // Calculate processing time
+    const analysisEndTime = Date.now();
+    const processingTimeSeconds = Math.round(
+      (analysisEndTime - analysisStartTime) / 1000
+    );
+
+    // Calculate dynamic credits based on size + time
+    const creditCalculation = calculateDynamicCredits(
+      fileSize,
+      processingTimeSeconds
+    );
+    const creditsToDeduct = creditCalculation.total;
+
+    // Log detailed credit calculation breakdown (internal)
+    queueLogger.info("💰 Credit Calculation Breakdown", {
+      jobId,
+      filename,
+      fileSize: `${(fileSize / (1024 * 1024)).toFixed(2)} MB`,
+      processingTime: `${processingTimeSeconds}s`,
+      sizeTier: getSizeTier(fileSize),
+      timeTier: getTimeTier(processingTimeSeconds),
+      baseCredits: creditCalculation.breakdown.baseCredits,
+      timeCredits: creditCalculation.breakdown.timeCredits,
+      complexityCredits: creditCalculation.breakdown.complexityCredits,
+      totalCredits: creditsToDeduct,
+      formula: `${creditCalculation.breakdown.baseCredits} (size) + ${creditCalculation.breakdown.timeCredits} (time) = ${creditsToDeduct} total`,
+    });
+
+    // Update job with credit breakdown
+    analysisJob.processingTimeSeconds = processingTimeSeconds;
+    analysisJob.creditsDeducted = creditsToDeduct;
+    analysisJob.creditBreakdown = {
+      baseCredits: creditCalculation.breakdown.baseCredits,
+      timeCredits: creditCalculation.breakdown.timeCredits,
+      complexityCredits: creditCalculation.breakdown.complexityCredits,
+      sizeTier: getSizeTier(fileSize),
+      timeTier: getTimeTier(processingTimeSeconds),
+      totalCalculated: creditsToDeduct,
+    };
+
+    await analysisJob.save();
+
+    // Deduct credits AFTER successful analysis
+    const analysisSource = source === "user-dashboard" ? "Dashboard" : "SDK";
+    const description = `${analysisSource} Binary Analysis`;
+
+    queueLogger.info("Attempting to deduct credits", {
+      jobId,
+      userId,
+      amount: creditsToDeduct,
+      apiKeyId,
+      source: analysisSource,
+    });
+
+    try {
+      await deductCreditsForSDK(
+        userId,
+        creditsToDeduct,
+        jobId,
+        apiKeyId,
+        description
+      );
+
+      queueLogger.info("✅ Credits deducted after successful analysis", {
+        jobId,
+        userId,
+        creditsDeducted: creditsToDeduct,
+        breakdown: formatCreditBreakdown(creditCalculation),
+        processingTime: `${processingTimeSeconds}s`,
+        fileSize: `${(fileSize / (1024 * 1024)).toFixed(2)} MB`,
+      });
+    } catch (creditError) {
+      queueLogger.error("❌ Failed to deduct credits", {
+        jobId,
+        userId,
+        amount: creditsToDeduct,
+        error: creditError.message,
+        stack: creditError.stack,
+      });
+      // Don't fail the job, but log the error
+      // The analysis is complete, credit deduction failure is a separate issue
+    }
+
     // Mark as completed
     await analysisJob.updateStatus("completed");
     await job.progress(100);
@@ -106,12 +204,14 @@ async function processAnalysisJob(job) {
     emitJobEvent(userId, jobId, "job:completed", {
       status: "completed",
       results,
+      creditsCharged: creditsToDeduct,
     });
 
     queueLogger.info("Job completed successfully", {
       jobId,
       filename,
-      processingTime: analysisJob.getProcessingTime(),
+      processingTime: `${processingTimeSeconds}s`,
+      creditsCharged: creditsToDeduct,
     });
 
     // Clean up temp file
@@ -126,6 +226,7 @@ async function processAnalysisJob(job) {
       success: true,
       jobId,
       results,
+      creditsCharged: creditsToDeduct,
     };
   } catch (error) {
     queueLogger.error("Job processing failed", {
@@ -139,28 +240,12 @@ async function processAnalysisJob(job) {
       await analysisJob.updateStatus("failed", error);
     }
 
-    // Refund credits
-    try {
-      if (analysisJob && analysisJob.creditsDeducted > 0) {
-        await refundCreditsForSDK(
-          userId,
-          analysisJob.creditsDeducted,
-          jobId,
-          error.message
-        );
-
-        queueLogger.info("Credits refunded", {
-          jobId,
-          userId,
-          amount: analysisJob.creditsDeducted,
-        });
-      }
-    } catch (refundError) {
-      queueLogger.error("Credit refund failed", {
-        jobId,
-        error: refundError.message,
-      });
-    }
+    // NO credits to refund since we didn't deduct any upfront
+    queueLogger.info("No credits refunded (none were deducted upfront)", {
+      jobId,
+      userId,
+      reason: "Credits are only deducted after successful analysis",
+    });
 
     // Emit failure event
     emitJobEvent(userId, jobId, "job:failed", {

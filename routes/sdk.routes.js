@@ -42,7 +42,7 @@ router.post(
   "/analyze",
   requirePermission("sdk:analyze"),
   uploadSingle, // Handle file upload
-  creditCheck(1), // Require 1 credit
+  creditCheck(), // Check minimum credits (5+), actual cost calculated after analysis
   analyzeSingle
 );
 

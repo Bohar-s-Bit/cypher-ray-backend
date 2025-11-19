@@ -158,7 +158,7 @@ export const analyzeSingle = async (req, res) => {
       status: "queued",
       tier: userTier,
       priority,
-      creditsDeducted: req.creditsRequired || 1,
+      creditsDeducted: 0, // Will be calculated and deducted after analysis completes
       metadata: {
         sourceIp: req.ip,
         userAgent: req.get("user-agent"),
@@ -167,14 +167,9 @@ export const analyzeSingle = async (req, res) => {
       },
     });
 
-    // Deduct credits with job ID for proper tracking
-    const creditsRequired = req.creditsRequired || 1;
-    await deductCreditsForSDK(
-      userId,
-      creditsRequired,
-      job._id.toString(),
-      apiKeyId
-    );
+    // NOTE: Credits are NOT deducted here
+    // They will be calculated and deducted after analysis completes
+    // based on file size + processing time
 
     // Add to queue with Cloudinary data
     await sdkAnalysisQueue.add(
@@ -186,7 +181,10 @@ export const analyzeSingle = async (req, res) => {
         cloudinaryPublicId: file.filename,
         fileHash,
         filename: file.originalname,
+        fileSize: file.size, // Pass file size for credit calculation
         tier: userTier,
+        apiKeyId: apiKeyId?.toString(),
+        source: "sdk", // Identify source for correct transaction description
       },
       {
         priority,
@@ -198,15 +196,16 @@ export const analyzeSingle = async (req, res) => {
       userId: userId.toString(),
       jobId: job._id.toString(),
       filename: file.originalname,
+      fileSize: file.size,
       tier: userTier,
       priority,
+      note: "Credits will be deducted after analysis completes",
     });
 
     return res.status(202).json({
       success: true,
       message: "Analysis job queued successfully",
       cached: false,
-      creditsCharged: creditsRequired,
       job: {
         id: job._id,
         filename: job.filename,
@@ -278,7 +277,6 @@ export const analyzeBatch = async (req, res) => {
     });
 
     const results = [];
-    let creditsCharged = 0;
     const userTier = req.user.tier || "tier2";
     const priorityMap = { tier1: 1, tier2: 2 };
     const priority = priorityMap[userTier] || 2;
@@ -327,7 +325,7 @@ export const analyzeBatch = async (req, res) => {
           status: "queued",
           tier: userTier,
           priority,
-          creditsDeducted: 1,
+          creditsDeducted: 0, // Will be calculated and deducted after analysis completes
           metadata: {
             sourceIp: req.ip,
             userAgent: req.get("user-agent"),
@@ -336,11 +334,11 @@ export const analyzeBatch = async (req, res) => {
           },
         });
 
-        // Deduct credits with job ID
-        await deductCreditsForSDK(userId, 1, job._id.toString(), apiKeyId);
-        creditsCharged += 1;
+        // NOTE: Credits are NOT deducted here
+        // They will be calculated and deducted after analysis completes
+        // based on file size + processing time
 
-        // Add to queue with Cloudinary data
+        // Add to queue with Cloudinary data and file size for credit calculation
         await sdkAnalysisQueue.add(
           userTier,
           {
@@ -350,7 +348,10 @@ export const analyzeBatch = async (req, res) => {
             cloudinaryPublicId: file.filename,
             fileHash,
             filename: file.originalname,
+            fileSize: file.size, // Pass file size for dynamic credit calculation
             tier: userTier,
+            apiKeyId: apiKeyId?.toString(),
+            source: "sdk", // Identify source for correct transaction description
           },
           {
             priority,
@@ -361,7 +362,7 @@ export const analyzeBatch = async (req, res) => {
         results.push({
           filename: file.originalname,
           cached: false,
-          creditsCharged: 1,
+          note: "Credits will be calculated after analysis completes",
           job: {
             id: job._id,
             fileHash,
@@ -383,14 +384,14 @@ export const analyzeBatch = async (req, res) => {
     sdkLogger.info("Batch analysis queued", {
       userId: userId.toString(),
       totalFiles: files.length,
-      creditsCharged,
+      note: "Credits will be calculated and deducted after each file completes analysis",
     });
 
     return res.status(202).json({
       success: true,
       message: `${files.length} files processed`,
       totalFiles: files.length,
-      creditsCharged,
+      note: "Credits will be calculated and deducted after analysis completes based on file size and processing time",
       results,
       polling: {
         url: "/api/sdk/results/:jobId",

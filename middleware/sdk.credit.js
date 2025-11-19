@@ -3,36 +3,34 @@ import { sdkLogger } from "../utils/logger.js";
 
 /**
  * Credit Check Middleware
- * Ensures user has sufficient credits before processing
+ * Ensures user has minimum 5 credits before processing
+ * NOTE: Credits are NOT deducted here - deducted after analysis completes
  */
-export const creditCheck = (creditsRequired = 1) => {
+export const creditCheck = (minimumRequired = 5) => {
   return async (req, res, next) => {
     try {
       const userId = req.user._id;
 
-      // Get actual credits required (may vary based on request)
-      let requiredCredits = creditsRequired;
+      // Fetch fresh user data
+      const User = (await import("../models/user.model.js")).default;
+      const user = await User.findById(userId);
 
-      // For batch requests, calculate based on number of files
-      if (req.body?.files?.length) {
-        requiredCredits = req.body.files.length;
-      } else if (req.files?.length) {
-        requiredCredits = req.files.length;
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+          code: "USER_NOT_FOUND",
+        });
       }
 
-      // Check if user has enough credits (this fetches fresh data from DB)
-      const hasCredits = await hasEnoughCredits(userId, requiredCredits);
+      const available = user.credits.remaining;
 
-      if (!hasCredits) {
-        // Get current balance for error message (fetch fresh data)
-        const User = (await import("../models/user.model.js")).default;
-        const user = await User.findById(userId);
-        const available = user.credits.remaining;
-
-        sdkLogger.warn("Insufficient credits", {
+      // Check minimum credit threshold (allows negative up to -5 before blocking)
+      if (available < minimumRequired) {
+        sdkLogger.warn("Insufficient credits for analysis", {
           userId: userId.toString(),
-          required: requiredCredits,
           available,
+          minimumRequired,
           endpoint: req.path,
         });
 
@@ -41,26 +39,20 @@ export const creditCheck = (creditsRequired = 1) => {
           message: "Insufficient credits",
           code: "INSUFFICIENT_CREDITS",
           details: {
-            required: requiredCredits,
+            required: minimumRequired,
             available,
-            deficit: requiredCredits - available,
+            deficit: minimumRequired - available,
             tier: user.tier,
             upgradeUrl: `${process.env.FRONTEND_URL}/credits`,
           },
         });
       }
 
-      // Attach required credits to request for later use
-      req.creditsRequired = requiredCredits;
-
-      // Fetch fresh user data for accurate credit info
-      const User = (await import("../models/user.model.js")).default;
-      const freshUser = await User.findById(userId);
-
-      sdkLogger.info("Credit check passed", {
+      sdkLogger.info("Credit check passed - analysis will proceed", {
         userId: userId.toString(),
-        required: requiredCredits,
-        available: freshUser.credits.remaining,
+        available,
+        minimumRequired,
+        note: "Credits will be deducted after analysis completes",
       });
 
       next();
