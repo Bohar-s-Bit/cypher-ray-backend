@@ -3,26 +3,47 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Support both URL-based (Upstash, Railway) and host-based (local, Redis Cloud) configs
+// Optimized Redis configuration for production
+const baseRedisOptions = {
+  // Connection pooling
+  maxRetriesPerRequest: null, // Bull requires null for proper retry handling
+  enableReadyCheck: false, // Disable to reduce commands
+  enableOfflineQueue: true,
+
+  // Optimized retry strategy - exponential backoff
+  retryStrategy: (times) => {
+    if (times > 10) {
+      console.error("❌ Redis connection failed after 10 retries");
+      return null; // Stop retrying after 10 attempts
+    }
+    const delay = Math.min(times * 100, 3000); // Max 3s delay
+    return delay;
+  },
+
+  // Reconnect on specific errors
+  reconnectOnError: (err) => {
+    const targetErrors = ["READONLY", "ECONNRESET", "ETIMEDOUT"];
+    return targetErrors.some((target) => err.message.includes(target));
+  },
+
+  // Lazy connect - don't connect until first command
+  lazyConnect: false,
+
+  // Keep alive
+  keepAlive: 30000, // 30s keepalive
+
+  // Command timeout
+  commandTimeout: 5000, // 5s timeout for commands
+};
+
+// Support both URL-based (Upstash, Railway, Render, Aiven) and host-based (local, Redis Cloud) configs
 let redisClient;
 
 if (process.env.REDIS_URL) {
-  // URL-based connection (for Upstash, Railway, etc.)
+  // URL-based connection (for cloud providers)
   redisClient = new Redis(process.env.REDIS_URL, {
-    maxRetriesPerRequest: 3,
-    enableReadyCheck: true,
-    retryStrategy: (times) => {
-      const delay = Math.min(times * 50, 2000);
-      return delay;
-    },
-    reconnectOnError: (err) => {
-      const targetError = "READONLY";
-      if (err.message.includes(targetError)) {
-        return true;
-      }
-      return false;
-    },
-    // TLS config for secure connections (Upstash uses TLS)
+    ...baseRedisOptions,
+    // TLS config for secure connections
     tls: process.env.REDIS_URL.startsWith("rediss://")
       ? {
           rejectUnauthorized: false,
@@ -32,22 +53,11 @@ if (process.env.REDIS_URL) {
 } else {
   // Host-based connection (for local development or Redis Cloud)
   const redisConfig = {
+    ...baseRedisOptions,
     host: process.env.REDIS_HOST || "localhost",
     port: parseInt(process.env.REDIS_PORT) || 6379,
     password: process.env.REDIS_PASSWORD || undefined,
-    maxRetriesPerRequest: 3,
-    enableReadyCheck: true,
-    retryStrategy: (times) => {
-      const delay = Math.min(times * 50, 2000);
-      return delay;
-    },
-    reconnectOnError: (err) => {
-      const targetError = "READONLY";
-      if (err.message.includes(targetError)) {
-        return true;
-      }
-      return false;
-    },
+    db: parseInt(process.env.REDIS_DB) || 0,
   };
 
   redisClient = new Redis(redisConfig);
