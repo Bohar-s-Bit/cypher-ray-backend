@@ -13,6 +13,7 @@ import {
   getUserApiKeys,
   revokeApiKey,
   getAccessRequests,
+  getComprehensiveUserDetails,
 } from "../controllers/admin.controllers.js";
 import {
   loginValidation,
@@ -56,6 +57,14 @@ router.get(
 
 // Get user details
 router.get("/users/:userId", adminAuth, userIdValidation, getUserDetails);
+
+// Get comprehensive user details (new detailed endpoint)
+router.get(
+  "/users/:userId/details",
+  adminAuth,
+  userIdValidation,
+  getComprehensiveUserDetails
+);
 
 // Update user credits
 router.put(

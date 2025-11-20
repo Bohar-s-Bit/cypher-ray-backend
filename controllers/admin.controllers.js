@@ -1,5 +1,8 @@
 import User from "../models/user.model.js";
 import ApiKey from "../models/api.key.model.js";
+import AnalysisJob from "../models/analysis.job.model.js";
+import Payment from "../models/payment.model.js";
+import CreditTransaction from "../models/credit.transaction.model.js";
 import { generateToken } from "../utils/jwt.js";
 import {
   createUserService,
@@ -515,6 +518,250 @@ export const getAccessRequests = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to retrieve access requests",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+/**
+ * Get comprehensive user details for admin dashboard
+ * GET /api/admin/users/:userId/details
+ * Query params: creditDays, paymentDays, creditPage, creditLimit, paymentPage, paymentLimit
+ */
+export const getComprehensiveUserDetails = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const {
+      creditDays = "all",
+      paymentDays = "all",
+      creditPage = 1,
+      creditLimit = 10,
+      paymentPage = 1,
+      paymentLimit = 10,
+    } = req.query;
+
+    // Validate user exists
+    const user = await User.findById(userId).select("-password");
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Calculate date ranges
+    const getCutoffDate = (days) => {
+      if (days === "all") return null;
+      const date = new Date();
+      date.setDate(date.getDate() - parseInt(days));
+      return date;
+    };
+
+    const creditCutoff = getCutoffDate(creditDays);
+    const paymentCutoff = getCutoffDate(paymentDays);
+
+    // Build queries with time filters
+    const creditQuery = { userId };
+    if (creditCutoff) {
+      creditQuery.createdAt = { $gte: creditCutoff };
+    }
+
+    const paymentQuery = { userId };
+    if (paymentCutoff) {
+      paymentQuery.createdAt = { $gte: paymentCutoff };
+    }
+
+    // Fetch all data in parallel
+    const [
+      creditTransactions,
+      creditTotal,
+      payments,
+      paymentTotal,
+      apiKeys,
+      analysisJobs,
+      analysisTotal,
+    ] = await Promise.all([
+      // Credit history with pagination
+      CreditTransaction.find(creditQuery)
+        .sort({ createdAt: -1 })
+        .skip((creditPage - 1) * creditLimit)
+        .limit(parseInt(creditLimit)),
+      CreditTransaction.countDocuments(creditQuery),
+
+      // Payment history with pagination
+      Payment.find(paymentQuery)
+        .sort({ createdAt: -1 })
+        .skip((paymentPage - 1) * paymentLimit)
+        .limit(parseInt(paymentLimit)),
+      Payment.countDocuments(paymentQuery),
+
+      // API Keys
+      ApiKey.find({ userId }).sort({ createdAt: -1 }),
+
+      // Analysis jobs
+      AnalysisJob.find({ userId })
+        .select(
+          "filename status tier creditsDeducted processingTimeSeconds createdAt completedAt"
+        )
+        .sort({ createdAt: -1 })
+        .limit(100), // Last 100 jobs
+      AnalysisJob.countDocuments({ userId }),
+    ]);
+
+    // Calculate credit statistics for chart data
+    const creditStats = await CreditTransaction.aggregate([
+      {
+        $match: creditQuery,
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+          },
+          credits: { $sum: "$amount" },
+          debits: {
+            $sum: {
+              $cond: [{ $eq: ["$type", "debit"] }, "$amount", 0],
+            },
+          },
+          additions: {
+            $sum: {
+              $cond: [
+                { $in: ["$type", ["credit", "bonus", "refund"]] },
+                "$amount",
+                0,
+              ],
+            },
+          },
+        },
+      },
+      { $sort: { _id: 1 } },
+      { $limit: 30 }, // Last 30 data points
+    ]);
+
+    // Calculate API usage statistics
+    const apiUsageStats = apiKeys.map((key) => ({
+      name: key.name,
+      requestCount: key.requestCount,
+      isActive: key.isActive,
+      lastUsed: key.lastUsedAt,
+    }));
+
+    // Calculate analysis statistics
+    const analysisStats = {
+      total: analysisTotal,
+      completed: analysisJobs.filter((j) => j.status === "completed").length,
+      failed: analysisJobs.filter((j) => j.status === "failed").length,
+      processing: analysisJobs.filter((j) => j.status === "processing").length,
+      totalCreditsConsumed: analysisJobs.reduce(
+        (sum, j) => sum + (j.creditsDeducted || 0),
+        0
+      ),
+      averageProcessingTime:
+        analysisJobs.filter((j) => j.processingTimeSeconds).length > 0
+          ? Math.round(
+              analysisJobs.reduce(
+                (sum, j) => sum + (j.processingTimeSeconds || 0),
+                0
+              ) / analysisJobs.filter((j) => j.processingTimeSeconds).length
+            )
+          : 0,
+    };
+
+    // Prepare response
+    res.status(200).json({
+      success: true,
+      message: "Comprehensive user details retrieved successfully",
+      data: {
+        // Basic user info
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          organizationName: user.organizationName,
+          userType: user.userType,
+          accountStatus: user.accountStatus,
+          isActive: user.isActive,
+          tier: user.tier,
+          tierInfo: user.tierInfo,
+          createdAt: user.createdAt,
+          totalSpent: user.totalSpent,
+        },
+
+        // Credit information
+        credits: {
+          current: {
+            total: user.credits.total,
+            used: user.credits.used,
+            remaining: user.credits.remaining,
+            percentage:
+              user.credits.total > 0
+                ? Math.round(
+                    (user.credits.remaining / user.credits.total) * 100
+                  )
+                : 0,
+          },
+          history: {
+            transactions: creditTransactions,
+            pagination: {
+              page: parseInt(creditPage),
+              limit: parseInt(creditLimit),
+              total: creditTotal,
+              totalPages: Math.ceil(creditTotal / creditLimit),
+            },
+          },
+          chartData: creditStats,
+        },
+
+        // Payment information
+        payments: {
+          history: payments.map((p) => ({
+            id: p._id,
+            amount: p.amount,
+            currency: p.currency,
+            status: p.status,
+            plan: p.plan,
+            credits: p.credits,
+            paymentMethod: p.paymentMethod,
+            createdAt: p.createdAt,
+          })),
+          pagination: {
+            page: parseInt(paymentPage),
+            limit: parseInt(paymentLimit),
+            total: paymentTotal,
+            totalPages: Math.ceil(paymentTotal / paymentLimit),
+          },
+        },
+
+        // Analysis statistics
+        analysis: analysisStats,
+
+        // API Keys
+        apiKeys: {
+          keys: apiKeys.map((key) => ({
+            id: key._id,
+            name: key.name,
+            keyPreview: `${key.key.substring(0, 12)}...${key.key.substring(
+              key.key.length - 4
+            )}`,
+            isActive: key.isActive,
+            expiresAt: key.expiresAt,
+            lastUsedAt: key.lastUsedAt,
+            requestCount: key.requestCount,
+            permissions: key.permissions,
+            createdAt: key.createdAt,
+          })),
+          total: apiKeys.length,
+          active: apiKeys.filter((k) => k.isActive).length,
+          usageStats: apiUsageStats,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Get comprehensive user details error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve comprehensive user details",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
