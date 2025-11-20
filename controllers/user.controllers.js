@@ -418,6 +418,7 @@ export const getUserJobResult = async (req, res) => {
           progress: job.progress,
           results: job.results,
           createdAt: job.createdAt,
+          startedAt: job.startedAt,
           completedAt: job.completedAt,
           error: job.error,
         },
@@ -449,7 +450,7 @@ export const getUserAnalysisHistory = async (req, res) => {
         .skip(skip)
         .limit(limit)
         .select(
-          "_id filename status tier progress results createdAt completedAt error"
+          "_id filename status tier progress results createdAt startedAt completedAt error"
         ),
       AnalysisJob.countDocuments({ userId }),
     ]);
@@ -469,6 +470,7 @@ export const getUserAnalysisHistory = async (req, res) => {
           vulnerabilityCount:
             job.results?.vulnerability_assessment?.vulnerabilities?.length || 0,
           createdAt: job.createdAt,
+          startedAt: job.startedAt,
           completedAt: job.completedAt,
           error: job.error,
         })),

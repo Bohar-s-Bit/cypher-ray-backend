@@ -136,6 +136,7 @@ export const analyzeSingle = async (req, res) => {
           fileHash,
           status: existingJob.status,
           results: existingJob.results,
+          startedAt: existingJob.startedAt,
           completedAt: existingJob.completedAt,
         },
       });
