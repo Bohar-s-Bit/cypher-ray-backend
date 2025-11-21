@@ -303,7 +303,9 @@ export const analyzeSingleUser = async (req, res) => {
     }
 
     if (!file.path || !file.filename) {
-      console.error("[UPLOAD ERROR] Cloudinary upload failed - missing file.path or file.filename");
+      console.error(
+        "[UPLOAD ERROR] Cloudinary upload failed - missing file.path or file.filename"
+      );
       return res.status(500).json({
         success: false,
         message: "File upload to Cloudinary failed",

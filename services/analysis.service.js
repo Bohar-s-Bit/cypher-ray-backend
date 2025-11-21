@@ -103,20 +103,23 @@ class AnalysisService {
     }));
 
     // Extract functions (new structure uses detected_functions)
-    const functions = (data.detected_functions || data.function_analyses || [])
-      .map((func) => ({
-        function_name: func.name || func.function_name,
-        address: func.address,
-        crypto_operations: func.crypto_operations || [],
-        function_summary:
-          func.explanation ||
-          func.function_summary ||
-          "Cryptographic function detected",
-        semantic_tags: func.crypto_operations || func.semantic_tags || [],
-        is_crypto: true,
-        confidence_score: func.confidence || func.confidence_score || 0.7,
-        related_algorithm: func.related_algorithm,
-      }));
+    const functions = (
+      data.detected_functions ||
+      data.function_analyses ||
+      []
+    ).map((func) => ({
+      function_name: func.name || func.function_name,
+      address: func.address,
+      crypto_operations: func.crypto_operations || [],
+      function_summary:
+        func.explanation ||
+        func.function_summary ||
+        "Cryptographic function detected",
+      semantic_tags: func.crypto_operations || func.semantic_tags || [],
+      is_crypto: true,
+      confidence_score: func.confidence || func.confidence_score || 0.7,
+      related_algorithm: func.related_algorithm,
+    }));
 
     // Extract protocols
     const protocols = data.detected_protocols || [];
@@ -161,7 +164,9 @@ class AnalysisService {
     const structuralSummary = [
       structuralAnalysis.crypto_patterns?.join(", "),
       `Code obfuscation: ${structuralAnalysis.code_obfuscation || "unknown"}`,
-      `Implementation: ${structuralAnalysis.implementation_quality || "unknown"}`,
+      `Implementation: ${
+        structuralAnalysis.implementation_quality || "unknown"
+      }`,
     ]
       .filter(Boolean)
       .join(". ");
