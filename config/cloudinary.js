@@ -17,6 +17,7 @@ if (!cloudinaryUrl) {
 cloudinary.config({
   cloudinary_url: cloudinaryUrl,
   secure: true, // Always use HTTPS
+  timeout: 120000, // 2 minutes timeout
 });
 
 // Free tier settings
