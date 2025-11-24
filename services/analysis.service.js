@@ -82,24 +82,152 @@ class AnalysisService {
 
   /**
    * Normalize ML results to consistent format
+   * Handles both new modular structure and legacy format
    */
   normalizeResults(rawResults) {
+    // Check if using new modular prompting structure (has 'analysis' wrapper)
+    const data = rawResults.analysis || rawResults;
+
+    // Extract file metadata
+    const fileMetadata = data.file_metadata || {};
+
+    // Extract algorithms (new structure has more detailed fields)
+    const algorithms = (data.detected_algorithms || []).map((algo) => ({
+      algorithm_name: algo.name || algo.algorithm_name,
+      confidence_score: algo.confidence || algo.confidence_score,
+      algorithm_class: algo.type || algo.algorithm_class,
+      structural_signature:
+        algo.structural_signature || this._inferStructure(algo.name),
+      evidence: algo.evidence || [],
+      locations: algo.locations || [],
+    }));
+
+    // Extract functions (new structure uses detected_functions)
+    const functions = (
+      data.detected_functions ||
+      data.function_analyses ||
+      []
+    ).map((func) => ({
+      function_name: func.name || func.function_name,
+      address: func.address,
+      crypto_operations: func.crypto_operations || [],
+      function_summary:
+        func.explanation ||
+        func.function_summary ||
+        "Cryptographic function detected",
+      semantic_tags: func.crypto_operations || func.semantic_tags || [],
+      is_crypto: true,
+      confidence_score: func.confidence || func.confidence_score || 0.7,
+      related_algorithm: func.related_algorithm,
+    }));
+
+    // Extract protocols
+    const protocols = data.detected_protocols || [];
+
+    // Extract vulnerabilities (new modular structure)
+    const vulnerabilities = data.vulnerabilities || [];
+    const hasVulnerabilities = vulnerabilities.length > 0;
+    const criticalVulns = vulnerabilities.filter(
+      (v) => v.severity === "critical"
+    );
+    const highVulns = vulnerabilities.filter((v) => v.severity === "high");
+
+    // Determine overall severity
+    let severity = "None";
+    if (criticalVulns.length > 0) {
+      severity = "Critical";
+    } else if (highVulns.length > 0) {
+      severity = "High";
+    } else if (vulnerabilities.length > 0) {
+      severity = "Medium";
+    }
+
+    // Format vulnerabilities for storage
+    const vulnDescriptions = vulnerabilities.map(
+      (v) =>
+        `[${v.severity.toUpperCase()}] ${v.type}: ${v.description}${
+          v.extracted_value ? ` (Value: ${v.extracted_value})` : ""
+        }`
+    );
+
+    // Extract recommendations (new structure)
+    const recommendations = (data.recommendations || []).map(
+      (rec) =>
+        `[${rec.priority.toUpperCase()}] ${rec.category}: ${rec.recommendation}`
+    );
+
+    // Extract explainability
+    const explainability = data.explainability || {};
+
+    // Build structural analysis summary
+    const structuralAnalysis = data.structural_analysis || {};
+    const structuralSummary = [
+      structuralAnalysis.crypto_patterns?.join(", "),
+      `Code obfuscation: ${structuralAnalysis.code_obfuscation || "unknown"}`,
+      `Implementation: ${
+        structuralAnalysis.implementation_quality || "unknown"
+      }`,
+    ]
+      .filter(Boolean)
+      .join(". ");
+
+    // Library usage
+    const libraryUsage = data.library_usage || {};
+    const libraryInfo = [
+      ...(libraryUsage.identified_libraries || []),
+      ...(libraryUsage.custom_implementations || []).map(
+        (impl) => `Custom: ${impl}`
+      ),
+    ].join(", ");
+
     return {
-      file_metadata: rawResults.file_metadata || {},
-      detected_algorithms: rawResults.detected_algorithms || [],
-      function_analyses: rawResults.function_analyses || [],
-      vulnerability_assessment: {
-        has_vulnerabilities:
-          rawResults.vulnerability_assessment?.has_vulnerabilities || false,
-        severity: rawResults.vulnerability_assessment?.severity || "None",
-        vulnerabilities:
-          rawResults.vulnerability_assessment?.vulnerabilities || [],
-        recommendations:
-          rawResults.vulnerability_assessment?.recommendations || [],
+      file_metadata: {
+        file_type: fileMetadata.format || fileMetadata.file_type,
+        size_bytes: fileMetadata.size || fileMetadata.size_bytes,
+        md5: fileMetadata.md5,
+        sha1: fileMetadata.sha1,
+        sha256: fileMetadata.sha256,
+        architecture: fileMetadata.architecture,
+        stripped: fileMetadata.stripped,
       },
-      overall_assessment: rawResults.overall_assessment || "",
-      xai_explanation: rawResults.xai_explanation || "",
+      detected_algorithms: algorithms,
+      function_analyses: functions,
+      detected_protocols: protocols,
+      structural_analysis: structuralSummary,
+      library_usage: libraryInfo,
+      vulnerability_assessment: {
+        has_vulnerabilities: hasVulnerabilities,
+        severity: severity,
+        vulnerabilities: vulnDescriptions,
+        recommendations: recommendations,
+        security_score: explainability.security_score || 0,
+      },
+      overall_assessment:
+        explainability.summary ||
+        data.overall_assessment ||
+        "Analysis completed successfully",
+      xai_explanation:
+        explainability.detailed_explanation ||
+        data.xai_explanation ||
+        explainability.summary ||
+        "",
+      key_findings: explainability.key_findings || [],
+      primary_purpose: explainability.primary_purpose,
+      _analysis_metadata: data._analysis_metadata || {},
     };
+  }
+
+  /**
+   * Infer structural pattern from algorithm name
+   */
+  _inferStructure(algorithmName) {
+    if (!algorithmName) return null;
+    const name = algorithmName.toLowerCase();
+    if (name.includes("aes")) return "SPN";
+    if (name.includes("des")) return "Feistel";
+    if (name.includes("chacha") || name.includes("salsa")) return "ARX";
+    if (name.includes("sha") || name.includes("md5")) return "Merkle-Damgård";
+    return null;
   }
 
   /**

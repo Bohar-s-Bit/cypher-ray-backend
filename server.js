@@ -84,7 +84,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from assets folder (for email logo)
-app.use('/assets', express.static('assets'));
+app.use("/assets", express.static("assets"));
 
 // Request logging
 if (process.env.NODE_ENV === "development") {
@@ -100,6 +100,10 @@ const limiter = rateLimit({
   message: "Too many requests from this IP, please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for internal job status polling routes
+    return req.path.match(/^\/api\/user\/analyze\/[a-f0-9]{24}$/i);
+  },
 });
 
 app.use("/api/", limiter);

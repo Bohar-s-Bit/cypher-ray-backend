@@ -285,11 +285,31 @@ export const analyzeSingleUser = async (req, res) => {
     const file = req.file;
     const userId = req.user._id;
 
+    console.log("[UPLOAD DEBUG] File received:", {
+      hasFile: !!file,
+      filename: file?.originalname,
+      size: file?.size,
+      path: file?.path,
+      cloudinaryId: file?.filename,
+      etag: file?.etag,
+    });
+
     if (!file) {
       return res.status(400).json({
         success: false,
         message: "No file uploaded",
         code: "NO_FILE",
+      });
+    }
+
+    if (!file.path || !file.filename) {
+      console.error(
+        "[UPLOAD ERROR] Cloudinary upload failed - missing file.path or file.filename"
+      );
+      return res.status(500).json({
+        success: false,
+        message: "File upload to Cloudinary failed",
+        code: "CLOUDINARY_UPLOAD_FAILED",
       });
     }
 
