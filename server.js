@@ -17,7 +17,6 @@ import "./config/redis.js";
 import "./config/queue.js";
 import "./services/queue.worker.js"; // Initialize queue workers
 import { startCleanupService } from "./services/cloudinary.cleanup.js"; // Cloudinary cleanup
-import { startKeepAlive } from "./services/keep-alive.js"; // Keep services awake
 
 // Routes
 import userRoutes from "./routes/user.routes.js";
@@ -183,9 +182,6 @@ httpServer.listen(PORT, () => {
 
   // Start Cloudinary cleanup service (runs daily at 2 AM)
   startCleanupService();
-
-  // Start keep-alive service (pings services every 10 min to prevent sleep)
-  startKeepAlive();
 
   logger.info("Server started successfully", {
     port: PORT,
