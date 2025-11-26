@@ -46,6 +46,7 @@ async function processAnalysisJob(job) {
     tier,
     apiKeyId,
     source = "sdk", // Default to SDK if not specified
+    forceDeep = false, // Extract force_deep flag
   } = job.data;
 
   queueLogger.info("Processing analysis job", {
@@ -56,6 +57,7 @@ async function processAnalysisJob(job) {
     tier,
     cloudinaryPublicId,
     source,
+    forceDeep,
   });
 
   let analysisJob = null;
@@ -100,8 +102,12 @@ async function processAnalysisJob(job) {
     await job.progress(40);
 
     // Call ML service for analysis using temp file
-    queueLogger.info("Calling ML service", { jobId, filename });
-    const results = await analysisService.analyzeBinary(tempFilePath, filename);
+    queueLogger.info("Calling ML service", { jobId, filename, forceDeep });
+    const results = await analysisService.analyzeBinary(
+      tempFilePath,
+      filename,
+      forceDeep
+    );
 
     // Update progress: 75% - Analysis complete
     await analysisJob.updateProgress(75);
