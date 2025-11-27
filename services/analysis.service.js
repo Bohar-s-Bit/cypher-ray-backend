@@ -17,13 +17,15 @@ class AnalysisService {
    * Analyze binary file using ML service
    * @param {String} filePath - Path to binary file
    * @param {String} filename - Original filename
+   * @param {Boolean} forceDeep - Skip triage and force deep analysis
    * @returns {Promise<Object>} Analysis results
    */
-  async analyzeBinary(filePath, filename) {
+  async analyzeBinary(filePath, filename, forceDeep = false) {
     try {
       queueLogger.info("Starting ML analysis", {
         filename,
         mlServiceUrl: this.mlServiceUrl,
+        forceDeep,
       });
 
       // Create form data
@@ -32,6 +34,11 @@ class AnalysisService {
         filename,
         contentType: "application/octet-stream",
       });
+
+      // Add force_deep flag if specified
+      if (forceDeep) {
+        formData.append("force_deep", "true");
+      }
 
       // Call ML service
       const response = await axios.post(this.mlServiceUrl, formData, {

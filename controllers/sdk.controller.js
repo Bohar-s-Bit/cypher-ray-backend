@@ -96,6 +96,8 @@ export const analyzeSingle = async (req, res) => {
     const userId = req.user._id;
     const apiKeyId = req.apiKey._id;
     const file = req.file;
+    const forceDeep =
+      req.body.force_deep === "true" || req.body.force_deep === true;
 
     sdkLogger.info("Single analysis request", {
       userId: userId.toString(),
@@ -103,6 +105,7 @@ export const analyzeSingle = async (req, res) => {
       size: file.size,
       cloudinaryUrl: file.path,
       cloudinaryPublicId: file.filename,
+      forceDeep,
     });
 
     // For Cloudinary files, we need to use a different approach for hash
@@ -165,6 +168,7 @@ export const analyzeSingle = async (req, res) => {
         userAgent: req.get("user-agent"),
         sdkVersion: req.get("x-sdk-version"),
         ciPlatform: req.get("x-ci-platform"),
+        forceDeep, // Store force_deep flag in metadata
       },
     });
 
@@ -186,6 +190,7 @@ export const analyzeSingle = async (req, res) => {
         tier: userTier,
         apiKeyId: apiKeyId?.toString(),
         source: "sdk", // Identify source for correct transaction description
+        forceDeep, // Pass force_deep flag to worker
       },
       {
         priority,
@@ -451,6 +456,7 @@ export const getResults = async (req, res) => {
         status: job.status,
         progress: job.progress,
         tier: job.tier,
+        creditsDeducted: job.creditsDeducted || 0,
         queuedAt: job.queuedAt,
         startedAt: job.startedAt,
         completedAt: job.completedAt,
