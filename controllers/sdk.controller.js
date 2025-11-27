@@ -456,6 +456,7 @@ export const getResults = async (req, res) => {
         status: job.status,
         progress: job.progress,
         tier: job.tier,
+        creditsDeducted: job.creditsDeducted || 0,
         queuedAt: job.queuedAt,
         startedAt: job.startedAt,
         completedAt: job.completedAt,
