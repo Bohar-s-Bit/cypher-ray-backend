@@ -284,6 +284,9 @@ export const analyzeSingleUser = async (req, res) => {
   try {
     const file = req.file;
     const userId = req.user._id;
+    
+    // Extract force_deep flag from request body
+    const forceDeep = req.body.force_deep === "true" || req.body.force_deep === true;
 
     console.log("[UPLOAD DEBUG] File received:", {
       hasFile: !!file,
@@ -292,6 +295,7 @@ export const analyzeSingleUser = async (req, res) => {
       path: file?.path,
       cloudinaryId: file?.filename,
       etag: file?.etag,
+      forceDeep,
     });
 
     if (!file) {
@@ -377,6 +381,7 @@ export const analyzeSingleUser = async (req, res) => {
         fileSize: file.size, // Pass file size for dynamic credit calculation
         tier: req.user.tier,
         source: "user-dashboard", // Identify source for correct transaction description
+        forceDeep, // Pass force_deep flag to worker
       },
       {
         priority: req.user.tier === "tier1" ? 1 : 2,
