@@ -284,9 +284,10 @@ export const analyzeSingleUser = async (req, res) => {
   try {
     const file = req.file;
     const userId = req.user._id;
-    
+
     // Extract force_deep flag from request body
-    const forceDeep = req.body.force_deep === "true" || req.body.force_deep === true;
+    const forceDeep =
+      req.body.force_deep === "true" || req.body.force_deep === true;
 
     console.log("[UPLOAD DEBUG] File received:", {
       hasFile: !!file,
