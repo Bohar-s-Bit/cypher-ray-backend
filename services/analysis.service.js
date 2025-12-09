@@ -10,7 +10,7 @@ class AnalysisService {
   constructor() {
     this.mlServiceUrl =
       process.env.MODEL_URL || "http://localhost:5000/analyze";
-    this.timeout = 300000; // 5 minutes
+    this.timeout = 1800000; // 30 minutes (increased from 5 min for large binaries with blob loader)
   }
 
   /**
@@ -107,6 +107,8 @@ class AnalysisService {
         algo.structural_signature || this._inferStructure(algo.name),
       evidence: algo.evidence || [],
       locations: algo.locations || [],
+      // NEW: Include cipher characteristics if available
+      cipher_characteristics: algo.cipher_characteristics || null,
     }));
 
     // Extract functions (new structure uses detected_functions)
@@ -125,7 +127,10 @@ class AnalysisService {
       semantic_tags: func.crypto_operations || func.semantic_tags || [],
       is_crypto: true,
       confidence_score: func.confidence || func.confidence_score || 0.7,
-      related_algorithm: func.related_algorithm,
+      // FIX: Handle related_algorithm as array or string
+      related_algorithm: Array.isArray(func.related_algorithm)
+        ? func.related_algorithm.join(", ")
+        : func.related_algorithm,
     }));
 
     // Extract protocols
@@ -190,7 +195,17 @@ class AnalysisService {
     return {
       file_metadata: {
         file_type: fileMetadata.format || fileMetadata.file_type,
-        size_bytes: fileMetadata.size || fileMetadata.size_bytes,
+        // CRITICAL FIX: Ensure size_bytes is always a Number (not string "not_computed")
+        size_bytes:
+          typeof fileMetadata.size === "number"
+            ? fileMetadata.size
+            : typeof fileMetadata.size_bytes === "number"
+            ? fileMetadata.size_bytes
+            : fileMetadata.size === "not_computed" ||
+              fileMetadata.size_bytes === "not_computed"
+            ? 0
+            : parseInt(fileMetadata.size || fileMetadata.size_bytes || 0, 10) ||
+              0,
         md5: fileMetadata.md5,
         sha1: fileMetadata.sha1,
         sha256: fileMetadata.sha256,
