@@ -10,7 +10,7 @@ class AnalysisService {
   constructor() {
     this.mlServiceUrl =
       process.env.MODEL_URL || "http://localhost:5000/analyze";
-    this.timeout = 1800000; // 30 minutes (increased from 5 min for large binaries with blob loader)
+    this.timeout = 6000000; // 100 minutes - extended timeout for large file processing
   }
 
   /**

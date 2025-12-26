@@ -14,39 +14,13 @@ import {
   verifyPaymentOwnership,
   verifyWebhook,
 } from "../middleware/payment.auth.js";
-import rateLimit from "express-rate-limit";
 
 const router = express.Router();
 
 /**
- * Rate Limiter for Payment Order Creation
- * Prevents abuse and rapid order creation
+ * Rate Limiting - DISABLED for troubleshooting
+ * TODO: Re-enable after fixing issues
  */
-const orderCreationLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 15, // 15 requests per hour
-  message: {
-    success: false,
-    message: "Too many payment attempts. Please try again after an hour.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-/**
- * Rate Limiter for Payment Verification
- * Prevents brute force signature attacks
- */
-const verificationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 attempts per 15 minutes
-  message: {
-    success: false,
-    message: "Too many verification attempts. Please try again later.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 // ============================================
 // PUBLIC ROUTES
@@ -67,7 +41,7 @@ router.get("/plans", getPlans);
  * Create Razorpay order for credit purchase
  * Body: { planId }
  */
-router.post("/create-order", auth, orderCreationLimiter, createPaymentOrder);
+router.post("/create-order", auth, createPaymentOrder);
 
 /**
  * POST /api/payment/verify
@@ -77,7 +51,6 @@ router.post("/create-order", auth, orderCreationLimiter, createPaymentOrder);
 router.post(
   "/verify",
   auth,
-  verificationLimiter,
   verifyPaymentOwnership,
   verifyPayment
 );
@@ -94,7 +67,7 @@ router.get("/history", auth, getPaymentHistory);
  * Retry failed payment
  * Body: { paymentId }
  */
-router.post("/retry", auth, orderCreationLimiter, retryPayment);
+router.post("/retry", auth, retryPayment);
 
 // ============================================
 // WEBHOOK ROUTES (Razorpay)

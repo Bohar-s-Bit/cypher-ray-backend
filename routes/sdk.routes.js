@@ -8,10 +8,6 @@ import {
 } from "../controllers/sdk.controller.js";
 import { apiKeyAuth, requirePermission } from "../middleware/sdk.auth.js";
 import { creditCheck, lowCreditWarning } from "../middleware/sdk.credit.js";
-import {
-  sdkRateLimiter,
-  burstRateLimiter,
-} from "../middleware/sdk.ratelimit.js";
 import { uploadSingle, uploadBatch } from "../utils/file.handler.js";
 
 const router = express.Router();
@@ -19,9 +15,8 @@ const router = express.Router();
 // Apply API key authentication to all SDK routes
 router.use(apiKeyAuth);
 
-// Apply rate limiting
-router.use(sdkRateLimiter);
-router.use(burstRateLimiter);
+// Rate limiting - DISABLED for troubleshooting
+// TODO: Re-enable after fixing issues
 
 // Apply low credit warning
 router.use(lowCreditWarning);

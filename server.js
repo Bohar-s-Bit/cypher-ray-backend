@@ -2,7 +2,6 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
 import morgan from "morgan";
 import { createServer } from "http";
 import { Server } from "socket.io";
@@ -92,20 +91,8 @@ if (process.env.NODE_ENV === "development") {
   app.use(morgan("combined"));
 }
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: "Too many requests from this IP, please try again later.",
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => {
-    // Skip rate limiting for internal job status polling routes
-    return req.path.match(/^\/api\/user\/analyze\/[a-f0-9]{24}$/i);
-  },
-});
-
-app.use("/api/", limiter);
+// Rate limiting - DISABLED for troubleshooting
+// TODO: Re-enable after fixing issues
 
 /**
  * Routes
