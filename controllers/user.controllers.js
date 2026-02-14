@@ -495,6 +495,8 @@ export const getUserAnalysisHistory = async (req, res) => {
           severity: job.results?.vulnerability_assessment?.severity,
           vulnerabilityCount:
             job.results?.vulnerability_assessment?.vulnerabilities?.length || 0,
+          malScore: job.results?.dynamic_analysis?.malScore ?? null,
+          riskLevel: job.results?.dynamic_analysis?.riskLevel ?? null,
           createdAt: job.createdAt,
           startedAt: job.startedAt,
           completedAt: job.completedAt,

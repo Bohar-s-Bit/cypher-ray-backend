@@ -33,7 +33,7 @@ const analysisJobSchema = new mongoose.Schema(
     cloudinaryPublicId: {
       type: String,
       required: false, // For deletion and management
-      index: true,
+      // index: true, // REMOVED: Index defined in compound indexes section to avoid duplicate
     },
     fileSize: {
       type: Number,
@@ -145,6 +145,37 @@ const analysisJobSchema = new mongoose.Schema(
       xai_explanation: String,
       key_findings: [String],
       primary_purpose: String,
+      dynamic_analysis: {
+        enabled: Boolean,
+        taskId: String,
+        malScore: Number,
+        riskLevel: String,
+        signatures: [
+          {
+            name: String,
+            severity: String,
+            description: String,
+            marks: [mongoose.Schema.Types.Mixed],
+          },
+        ],
+        extractedKeys: [
+          {
+            type: String,
+            data: mongoose.Schema.Types.Mixed,
+            sha256: String,
+          },
+        ],
+        behavioralAnalysis: {
+          processTree: [mongoose.Schema.Types.Mixed],
+          networkActivity: mongoose.Schema.Types.Mixed,
+          fileOperations: [String],
+          registryOperations: [String],
+        },
+        screenshots: [String],
+        error: String,
+        message: String,
+        mode: String,
+      },
       _analysis_metadata: {
         model_used: String,
         provider: String,
@@ -152,6 +183,8 @@ const analysisJobSchema = new mongoose.Schema(
         duration: Number,
         total_pipeline_cost: Number,
         stages_completed: Number,
+        analysis_mode: String,
+        static_unavailable: Boolean,
       },
     },
     error: {
@@ -178,7 +211,7 @@ const analysisJobSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Compound indexes for performance

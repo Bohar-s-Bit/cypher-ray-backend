@@ -10,6 +10,7 @@ Backend API server for the Cypher-Ray firmware analysis platform.
 - Job queue system for firmware analysis
 - Admin dashboard with user management
 - SDK API endpoints for firmware scanning
+- **Integrated Dynamic Analysis Engine (CAPEv2 Sandbox)** - Automated behavioral analysis of suspicious binaries
 
 ## Tech Stack
 
@@ -19,6 +20,8 @@ Backend API server for the Cypher-Ray firmware analysis platform.
 - **Email Service**: Resend API
 - **Queue**: Bull with Redis
 - **Authentication**: JWT
+- **Static Analysis**: Python ML Service
+- **Dynamic Analysis**: CAPEv2 Sandbox (Azure-hosted)
 
 ## Setup
 
@@ -29,6 +32,8 @@ Backend API server for the Cypher-Ray firmware analysis platform.
 - Redis (for job queue)
 - Resend account (for emails)
 - Razorpay account (for payments)
+- Python ML Service (for static analysis)
+- CAPEv2 API Token (for dynamic analysis) - Optional but recommended
 
 ### Installation
 
@@ -80,8 +85,53 @@ RAZORPAY_KEY_SECRET=your_razorpay_secret
 REDIS_HOST=localhost
 REDIS_PORT=6379
 
-# ML Service
+# ML Service (Static Analysis)
 ML_SERVICE_URL=http://localhost:8000
+
+# Dynamic Analysis Engine (CAPEv2 Sandbox) - Optional
+DYNAMIC_ANALYSIS_ENABLED=true
+DYNAMIC_HOST_IP=4.186.27.221
+DYNAMIC_PORT=8000
+DYNAMIC_API_URL=http://4.186.27.221:8000
+DYNAMIC_API_TOKEN=your_cape_api_token_here
+DYNAMIC_TIMEOUT=240
+DYNAMIC_POLL_INTERVAL=30
+```
+
+### Dynamic Analysis Setup (Optional but Recommended)
+
+The backend integrates with a **CAPEv2 Dynamic Sandbox** for automated behavioral analysis of suspicious binaries.
+
+**What it does:**
+
+- Automatically analyzes files flagged as suspicious by static analysis
+- Runs binaries in isolated Windows VMs
+- Detects malicious behavior, network activity, and extracts crypto keys
+- Provides malware scoring (0-10) and behavioral signatures
+
+**Configuration:**
+
+1. Get your API token from the CAPEv2 admin panel
+2. Add to `.env`:
+   ```env
+   DYNAMIC_ANALYSIS_ENABLED=true
+   DYNAMIC_API_TOKEN=your_token_here
+   ```
+3. Ensure network access to the CAPEv2 server (port 8000 must be accessible)
+
+**When it triggers:**
+
+- High/Critical severity vulnerabilities detected
+- Code obfuscation or packing found
+- Suspicious cryptographic patterns identified
+- Custom or unknown protocols detected
+
+📖 **Full Documentation**: See [DYNAMIC_ANALYSIS_INTEGRATION.md](./DYNAMIC_ANALYSIS_INTEGRATION.md) for detailed guide.
+
+To disable dynamic analysis, set:
+
+```env
+DYNAMIC_ANALYSIS_ENABLED=false
 ```
 
 ### Email Setup (Resend)
@@ -301,7 +351,6 @@ await resend.emails.send({
 ### Email Templates
 
 1. **Welcome Email** (`utils/send.email.js`)
-
    - Sent when admin creates new user
    - Contains credentials and login instructions
 
