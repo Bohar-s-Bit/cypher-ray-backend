@@ -172,15 +172,20 @@ class DynamicAnalysisService {
         rawResponse: response.data,
       });
 
-      // CAPE uses various failure statuses: failed, failed_analysis, failed_processing, failed_reporting
-      const failedStatuses = ["failed", "failed_analysis", "failed_processing", "failed_reporting"];
+      // CAPE status categories:
+      //   - "reported" = final report ready (terminal success)
+      //   - "pending", "running", "completed", "processing" = still working
+      //   - "failed_analysis" = VM failed, but CAPE retries internally - keep polling
+      //   - "failed_processing", "failed_reporting" = post-VM failures (terminal)
+      //   - "failed" = generic terminal failure
+      const terminalFailures = ["failed", "failed_processing", "failed_reporting"];
 
       return {
         taskId,
         status,
         isComplete: status === "reported",
-        isPending: ["pending", "running", "completed", "processing"].includes(status),
-        isFailed: failedStatuses.includes(status),
+        isPending: ["pending", "running", "completed", "processing", "failed_analysis"].includes(status),
+        isFailed: terminalFailures.includes(status),
         rawData: response.data,
       };
     } catch (error) {

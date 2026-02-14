@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "seed:admin": "node scripts/seed.admin.js"
+    "seed:admin": "node scripts/seed.admin.js",
+    "nuke": "node scripts/nuke-reset.js"
   },
   "repository": {
     "type": "git",

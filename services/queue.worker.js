@@ -241,7 +241,21 @@ async function processAnalysisJob(job) {
       stack: error.stack,
     });
 
-    // Update job status to failed
+    // Determine if this error is retryable
+    // Sandbox failures (failed_analysis, failed_processing) should NOT be retried
+    // as they just create duplicate tasks on CAPE
+    const nonRetryableErrors = [
+      "failed_analysis",
+      "failed_processing",
+      "failed_reporting",
+      "not enabled",
+      "authentication failed",
+    ];
+    const isNonRetryable = nonRetryableErrors.some((keyword) =>
+      error.message.toLowerCase().includes(keyword)
+    );
+
+    // Update job status to failed (permanent, no more retries)
     if (analysisJob) {
       await analysisJob.updateStatus("failed", error);
     }
@@ -276,7 +290,18 @@ async function processAnalysisJob(job) {
       await deleteFromCloudinary(cloudinaryPublicId);
     }
 
-    // Re-throw error for Bull to handle retries
+    if (isNonRetryable) {
+      // For sandbox failures: discard the job so Bull does NOT retry
+      // Move to failed state immediately by discarding remaining attempts
+      queueLogger.warn("Non-retryable error - discarding job (no retry)", {
+        jobId,
+        error: error.message,
+        attempt: job.attemptsMade + 1,
+      });
+      await job.discard();
+    }
+
+    // Re-throw error for Bull to handle
     throw error;
   }
 }
