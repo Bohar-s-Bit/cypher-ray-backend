@@ -247,6 +247,8 @@ class DynamicAnalysisService {
    */
   async pollUntilComplete(taskId) {
     let attempts = 0;
+    let failedAnalysisCount = 0;
+    const maxFailedAnalysisAttempts = 10; // Give CAPE ~5 min to recover from failed_analysis
 
     while (attempts < this.maxPollingAttempts) {
       const statusInfo = await this.checkStatus(taskId);
@@ -255,17 +257,33 @@ class DynamicAnalysisService {
         queueLogger.info("Dynamic analysis completed", {
           taskId,
           attempts,
+          recoveredFromFailedAnalysis: failedAnalysisCount > 0,
         });
         return statusInfo;
       }
 
       if (statusInfo.isFailed) {
-        queueLogger.error("Dynamic analysis task failed", {
+        queueLogger.error("Dynamic analysis task failed (terminal)", {
           taskId,
           status: statusInfo.status,
           attempts,
         });
         throw new Error(`Dynamic analysis failed with status: ${statusInfo.status}`);
+      }
+
+      // Track failed_analysis occurrences - CAPE may recover, but not forever
+      if (statusInfo.status === "failed_analysis") {
+        failedAnalysisCount++;
+        if (failedAnalysisCount >= maxFailedAnalysisAttempts) {
+          queueLogger.error("Dynamic analysis stuck in failed_analysis state", {
+            taskId,
+            failedAnalysisCount,
+            attempts,
+          });
+          throw new Error(
+            `Dynamic analysis failed: stuck in failed_analysis for ${failedAnalysisCount} checks (~${(failedAnalysisCount * this.pollInterval) / 60000}min)`,
+          );
+        }
       }
 
       // Still running, wait and retry
@@ -279,6 +297,7 @@ class DynamicAnalysisService {
           status: statusInfo.status,
           attempt: attempts,
           maxAttempts: this.maxPollingAttempts,
+          failedAnalysisCount: failedAnalysisCount > 0 ? failedAnalysisCount : undefined,
           nextCheckIn: `${this.pollInterval / 1000}s`,
           estimatedTimeLeft: `${((this.maxPollingAttempts - attempts) * this.pollInterval) / 60000}min`,
         });

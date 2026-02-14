@@ -245,9 +245,9 @@ async function processAnalysisJob(job) {
     // Sandbox failures (failed_analysis, failed_processing) should NOT be retried
     // as they just create duplicate tasks on CAPE
     const nonRetryableErrors = [
-      "failed_analysis",
       "failed_processing",
       "failed_reporting",
+      "stuck in failed_analysis",
       "not enabled",
       "authentication failed",
     ];
